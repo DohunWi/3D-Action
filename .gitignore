@@ -97,3 +97,23 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+
+# 유니티 필수 무시 폴더 (프로젝트가 3D_game 폴더 안에 있을 경우)
+3D_game/[Ll]ibrary/
+3D_game/[Tt]emp/
+3D_game/[Oo]bj/
+3D_game/[Bb]uild/
+3D_game/[Bb]uilds/
+3D_game/[Ll]ogs/
+3D_game/[Uu]ser[Ss]ettings/
+
+# 메모리 덤프 등
+3D_game/[Mm]emoryCaptures/
+3D_game/*.private
+3D_game/*.private.meta
+3D_game/^*.private.[0-9]+$
+3D_game/^*.private.[0-9]+.meta$
+
+# 맥 시스템 파일
+.DS_Store
