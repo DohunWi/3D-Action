@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.InputSystem; // 필수
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
@@ -7,128 +7,185 @@ public class PlayerController : MonoBehaviour
     [Header("Movement Settings")]
     public float moveSpeed = 5.0f;
     public float sprintSpeed = 8.0f;
-    public float rotationSpeed = 15.0f; // 회전 속도 (부드러움 조절)
-    public float gravity = -20.0f;      // 중력 (기본 물리보다 좀 더 세게)
+    public float rotationSpeed = 15.0f;
+    public float gravity = -20.0f;
     public float jumpHeight = 1.2f;
 
     [Header("References")]
-    public Transform cameraTransform;   // 메인 카메라
-    public Animator animator;           // Visual의 애니메이터
+    public Transform cameraTransform;
+    public Animator animator;
 
     // 내부 변수
     private CharacterController _controller;
-    private PlayerControls _inputActions; // Input System C# 클래스
+    private PlayerControls _inputActions;
     private Vector2 _inputMove;
-    private Vector3 _velocity; // 중력/점프 계산용 수직 속도
+    private Vector3 _verticalVelocity;
     private bool _isGrounded;
+    
+    // 상태 체크용 변수
+    private bool _isAttacking;
 
-    // 애니메이션 최적화 (해싱)
+    // 애니메이션 해시
     private static readonly int AnimID_Speed = Animator.StringToHash("Speed");
     private static readonly int AnimID_IsGrounded = Animator.StringToHash("IsGrounded");
     private static readonly int AnimID_Jump = Animator.StringToHash("Jump");
+    private static readonly int AnimID_DoAttack = Animator.StringToHash("doAttack");
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
-        
-        // Input System 인스턴스 생성
         _inputActions = new PlayerControls();
 
-        // 카메라가 비어있으면 자동으로 찾기
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
     }
 
     private void OnEnable()
     {
-        // 입력 활성화 및 점프 이벤트 연결
         _inputActions.Player.Enable();
         _inputActions.Player.Jump.performed += OnJump;
+        _inputActions.Player.Attack.performed += OnAttack;
     }
 
     private void OnDisable()
     {
         _inputActions.Player.Disable();
         _inputActions.Player.Jump.performed -= OnJump;
+        _inputActions.Player.Attack.performed -= OnAttack;
     }
 
     private void Update()
     {
-        HandleGravity(); // 중력 처리
-        HandleMovement(); // 이동 처리
+        _isGrounded = _controller.isGrounded;
+
+        // 중력 계산
+        if (_isGrounded && _verticalVelocity.y < 0)
+        {
+            _verticalVelocity.y = -2f;
+        }
+        _verticalVelocity.y += gravity * Time.deltaTime;
+
+        // 공격 상태 매 프레임 갱신
+        CheckAttackState();
+
+        // 공격 중이면 Root Motion을 켜서 애니메이션이 이동을 주도하게 하고,
+        // 공격이 아니면 꺼서 코드가 이동을 주도하게 함.
+        if (animator != null)
+        {
+            animator.applyRootMotion = _isAttacking;
+        }
+
+        // 이동 처리
+        Move();
     }
 
-    private void HandleMovement()
+    // 현재 공격 중인지 태그로 확인
+    private void CheckAttackState()
     {
-        // 1. 입력값 읽기
+        if (animator != null)
+        {
+            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            _isAttacking = stateInfo.IsTag("Attack");
+        }
+        else
+        {
+            _isAttacking = false;
+        }
+    }
+
+    private void Move()
+    {
+        // 1. 입력값 읽기 (공격 중이어도 방향키 입력은 받음 -> 회전을 위해)
         _inputMove = _inputActions.Player.Move.ReadValue<Vector2>();
         bool isSprinting = _inputActions.Player.Sprint.IsPressed();
 
-        // 입력이 없으면 애니메이션 0으로 만들고 리턴 (미세 떨림 방지)
-        if (_inputMove == Vector2.zero)
+        // 2. 방향 벡터 계산
+        Vector3 moveDirection = Vector3.zero;
+        if (_inputMove != Vector2.zero)
         {
-            if (animator != null) animator.SetFloat(AnimID_Speed, 0f, 0.1f, Time.deltaTime);
-            return;
+            Vector3 forward = cameraTransform.forward;
+            Vector3 right = cameraTransform.right;
+            forward.y = 0f; right.y = 0f;
+            forward.Normalize(); right.Normalize();
+
+            moveDirection = (forward * _inputMove.y + right * _inputMove.x).normalized;
         }
 
-        // 2. 목표 속도 설정
-        float targetSpeed = isSprinting ? sprintSpeed : moveSpeed;
-
-        // 3. 이동 방향 계산 (카메라 기준)
-        // 카메라가 보는 방향(Forward)과 오른쪽(Right)을 가져옴
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
-
-        // Y축(높이) 제거 -> 평지 이동만 하도록
-        //forward.y = 0f;
-        right.y = 0f;
-        forward.Normalize();
-        right.Normalize();
-
-        // 최종 이동 방향 벡터
-        Vector3 moveDir = (forward * _inputMove.y + right * _inputMove.x).normalized;
-
-        // 4. 이동 실행 (CharacterController 사용)
-        _controller.Move(moveDir * targetSpeed * Time.deltaTime);
-
-        // 5. 회전 처리 (캐릭터가 "이동하는 방향"을 바라보게 함)
-        if (moveDir != Vector3.zero)
+        // 3. 이동 실행 분기 (★ 핵심 로직)
+        if (_isAttacking)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(moveDir);
-            // Slerp로 부드럽게 회전
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            // [공격 중일 때]
+            // 코드로 이동하지 않음 -> _controller.Move 호출 안 함
+            // 대신 아래 OnAnimatorMove()가 호출되어 애니메이션이 캐릭터를 밈.
+            
+            // 단, 회전은 허용 (소울류처럼 공격 방향 조절)
+            if (_inputMove != Vector2.zero)
+            {
+                // 공격 중엔 회전을 약간 느리게 해서 무게감 주기 (0.5배)
+                Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, (rotationSpeed * 0.5f) * Time.deltaTime);
+            }
+        }
+        else
+        {
+            // [평소 상태]
+            // 코드로 직접 이동 시킴 (W,A,S,D)
+            float targetSpeed = (_inputMove == Vector2.zero) ? 0.0f : (isSprinting ? sprintSpeed : moveSpeed);
+            Vector3 horizontalMove = moveDirection * targetSpeed;
+            Vector3 finalMove = horizontalMove + _verticalVelocity; // 중력 포함
+
+            _controller.Move(finalMove * Time.deltaTime);
+
+            // 평소 회전
+            if (_inputMove != Vector2.zero)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
         }
 
-        // 6. 애니메이션 동기화
+        // 4. 애니메이션 파라미터 업데이트
         if (animator != null)
         {
-            // 실제 이동 속도를 기반으로 블렌딩
-            float currentHorizontalSpeed = new Vector3(_controller.velocity.x, 0.0f, _controller.velocity.z).magnitude;
-            animator.SetFloat(AnimID_Speed, currentHorizontalSpeed, 0.1f, Time.deltaTime);
+            Vector3 horizontalVelocity = new Vector3(_controller.velocity.x, 0, _controller.velocity.z);
+            float currentSpeed = horizontalVelocity.magnitude;
+            animator.SetFloat(AnimID_Speed, currentSpeed, 0.1f, Time.deltaTime);
             animator.SetBool(AnimID_IsGrounded, _isGrounded);
         }
     }
 
-    private void HandleGravity()
+    // Animator의 "Apply Root Motion"이 체크되어 있으면 이 함수가 자동으로 실행됨
+    private void OnAnimatorMove()
     {
-        _isGrounded = _controller.isGrounded;
-
-        if (_isGrounded && _velocity.y < 0)
+        // 공격 중에만 애니메이션의 움직임(Root Motion)을 적용
+        if (_isAttacking && _controller != null && animator != null)
         {
-            _velocity.y = -2f; // 땅에 붙어있게 약간의 힘 유지
-        }
+            // 1. 애니메이션이 이번 프레임에 움직인 거리(deltaPosition)를 가져옴
+            Vector3 rootMotion = animator.deltaPosition;
 
-        _velocity.y += gravity * Time.deltaTime;
-        _controller.Move(_velocity * Time.deltaTime);
+            // 2. Y축(중력)은 별도로 계산한 값을 덮어씌움 (안 그러면 공중부양 함)
+            rootMotion.y = _verticalVelocity.y * Time.deltaTime;
+
+            // 3. 캐릭터 컨트롤러를 통해 이동시킴
+            _controller.Move(rootMotion);
+        }
     }
 
     private void OnJump(InputAction.CallbackContext context)
     {
-        if (_isGrounded)
+        // 공격 중엔 점프 불가
+        if (_isGrounded && !_isAttacking)
         {
-            // 점프 공식: v = sqrt(h * -2 * g)
-            _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            _verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             if (animator != null) animator.SetTrigger(AnimID_Jump);
+        }
+    }
+
+    private void OnAttack(InputAction.CallbackContext context)
+    {
+        if (_isGrounded && animator != null)
+        {
+            animator.SetTrigger(AnimID_DoAttack);
         }
     }
 }
