@@ -1,9 +1,23 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+// 플레이어 상태 정의
+public enum PlayerState
+{
+    Locomotion, // 대기 및 이동
+    Roll,       // 구르기 (무적)
+    Attack,     // 공격
+    Parry,      // 패링
+    Hit,        // 피격
+    Die         // 사망
+}
+
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
+    [Header("State")]
+    public PlayerState currentState = PlayerState.Locomotion;
+
     [Header("Movement Settings")]
     public float moveSpeed = 5.0f;
     public float sprintSpeed = 8.0f;
@@ -14,11 +28,15 @@ public class PlayerController : MonoBehaviour
     [Header("References")]
     public Transform cameraTransform;
     public Animator animator;
-    // 내 몸상태 스크립트 연결
     private CharacterStats _stats;
 
     [Header("Combat")]
-    public Weapon myWeapon; // 무기 스크립트 연결용
+    public Weapon myWeapon;
+
+    [Header("Combo Settings")]
+    private bool _comboInputReceived = false; // 공격 중 입력이 들어왔는가?
+    private int _comboStep = 0;               // 현재 몇 번째 타격인가? (0, 1, 2...)
+    public int maxComboCount = 3; // 콤보가 3개라면 인덱스는 0, 1, 2
 
     // 내부 변수
     private CharacterController _controller;
@@ -26,14 +44,6 @@ public class PlayerController : MonoBehaviour
     private Vector2 _inputMove;
     private Vector3 _verticalVelocity;
     private bool _isGrounded;
-    
-    // 상태 체크용 변수
-    private bool _isBusy;
-    private bool _isAttacking;
-    private bool _isRolling;
-    private bool _isParrying;
-    private bool _isDead = false;
-    private bool _isHit = false;
 
     // 애니메이션 해시
     private static readonly int AnimID_Speed = Animator.StringToHash("speed");
@@ -44,6 +54,7 @@ public class PlayerController : MonoBehaviour
     private static readonly int AnimID_IsDead = Animator.StringToHash("isDead");
     private static readonly int AnimID_DoHit = Animator.StringToHash("doHit");
     private static readonly int AnimID_Parry = Animator.StringToHash("doParry");
+    private static readonly int AnimID_ComboStep = Animator.StringToHash("ComboStep");
 
     private void Awake()
     {
@@ -62,10 +73,11 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Attack.performed += OnAttack;
         _inputActions.Player.Roll.performed += OnRoll;
         _inputActions.Player.Parry.performed += OnParry;
+
         if (_stats != null)
         {
-            _stats.OnTakeDamage.AddListener(OnHit); // 맞으면 OnHit 실행
-            _stats.OnDeath.AddListener(OnDie);      // 죽으면 OnDie 실행
+            _stats.OnTakeDamage.AddListener(OnHit);
+            _stats.OnDeath.AddListener(OnDie);
         }
     }
 
@@ -76,7 +88,7 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Attack.performed -= OnAttack;
         _inputActions.Player.Roll.performed -= OnRoll;
         _inputActions.Player.Parry.performed -= OnParry;
-        // 연결 해제 
+
         if (_stats != null)
         {
             _stats.OnTakeDamage.RemoveListener(OnHit);
@@ -86,58 +98,124 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (_isDead) return; // 죽었으면 아무것도 안 함
+        if (currentState == PlayerState.Die) return;
 
         _isGrounded = _controller.isGrounded;
 
-        // 중력 계산
+        // 중력 계산 (공통)
         if (_isGrounded && _verticalVelocity.y < 0)
         {
             _verticalVelocity.y = -2f;
         }
         _verticalVelocity.y += gravity * Time.deltaTime;
 
-        // 공격 상태 매 프레임 갱신
-        CheckActionState();
+        // 입력값 읽기
+        _inputMove = _inputActions.Player.Move.ReadValue<Vector2>();
 
-        // 공격 중이면 Root Motion을 켜서 애니메이션이 이동을 주도하게 하고,
-        // 공격이 아니면 꺼서 코드가 이동을 주도하게 함.
-        if (animator != null)
+        // 상태별 업데이트
+        switch (currentState)
         {
-            animator.applyRootMotion = _isBusy;
+            case PlayerState.Locomotion:
+                UpdateLocomotion();
+                break;
+            
+            // 공격, 구르기, 패링 중에는 '회전 보정'이 필요하면 여기서 처리
+            case PlayerState.Attack:
+                UpdateAttackRotation();
+                break;
+                
+            case PlayerState.Roll:
+            case PlayerState.Parry:
+            case PlayerState.Hit:
+                // 이 상태들은 루트모션이 이동을 전담하므로 Update 로직은 비워둠
+                break;
+        }
+        
+        // 애니메이션 파라미터 갱신 (땅 체크 등)
+        animator.SetBool(AnimID_IsGrounded, _isGrounded);
+    }
+
+    // ★★★ 핵심: 상태 변경 함수 ★★★
+    public void ChangeState(PlayerState newState)
+    {
+        if (currentState == PlayerState.Die) return;
+        if (currentState == newState) return;
+
+        // [Exit] 상태 나갈 때
+        switch (currentState)
+        {
+            case PlayerState.Attack:
+                WeaponDisable(); // 공격 끊기면 무기 끄기
+                break;
         }
 
-        // 이동 처리
-        Move();
+        currentState = newState;
+
+        // [Enter] 상태 들어올 때
+        switch (currentState)
+        {
+            case PlayerState.Locomotion:
+                animator.applyRootMotion = false; // 직접 코드로 이동
+                // 대기 상태로 복귀 시 콤보 관련 모든 변수/파라미터 초기화
+                _comboStep = 0;
+                _comboInputReceived = false;
+                
+                // 애니메이터도 0으로 돌려놔야 다음 공격이나 트랜지션이 꼬이지 않음
+                animator.SetInteger(AnimID_ComboStep, 0);
+                break;
+
+            case PlayerState.Roll:
+                // 구르기 시작하면 콤보 끊기
+                _comboStep = 0;
+                _comboInputReceived = false;
+                animator.SetInteger(AnimID_ComboStep, 0);
+
+                animator.applyRootMotion = true; // 애니메이션 이동 사용
+                animator.SetTrigger(AnimID_Roll);
+                // ★ 구르기 방향 보정 (입력한 쪽을 보고 구르도록)
+                RotateToInputDirection();
+                break;
+
+            case PlayerState.Attack:
+                animator.applyRootMotion = true;
+                
+                // ★ 콤보 단계에 따라 다른 애니메이션 재생
+                // (Animator에 파라미터로 "ComboStep" int형이나, 각각의 Trigger가 필요함)
+                animator.SetInteger(AnimID_ComboStep, _comboStep); 
+                animator.SetTrigger(AnimID_DoAttack);
+                
+                // 공격 시작할 때 콤보 입력 초기화 (이번 공격에 대한 입력을 새로 받아야 하니까)
+                _comboInputReceived = false; 
+                break;
+
+            case PlayerState.Parry:
+                animator.applyRootMotion = true;
+                animator.SetTrigger(AnimID_Parry);
+                break;
+
+            case PlayerState.Hit:
+                // 시작하면 콤보 끊기
+                _comboStep = 0;
+                _comboInputReceived = false;
+                animator.SetInteger(AnimID_ComboStep, 0);
+                animator.applyRootMotion = true;
+                animator.SetTrigger(AnimID_DoHit);
+                WeaponDisable(); // 공격하다 맞으면 무기 끄기
+                break;
+
+            case PlayerState.Die:
+                animator.applyRootMotion = true;
+                animator.SetBool(AnimID_IsDead, true);
+                _inputActions.Player.Disable(); // 조작 차단
+                break;
+        }
     }
 
-    // 현재 애니메이션 태그로 확인
-    private void CheckActionState() 
+    // --- 상태별 Update 로직 ---
+
+    private void UpdateLocomotion()
     {
-        if (animator == null) return;
-
-        // 1. 현재 애니메이터 상태 정보 가져오기
-        var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-
-        // 2. 각 태그별 상태 저장 (멤버 변수에 기록)
-        _isAttacking = stateInfo.IsTag("Attack");
-        _isRolling   = stateInfo.IsTag("Roll");
-        _isParrying  = stateInfo.IsTag("Parry");
-
-        // 3. 통합 상태 갱신 (하나라도 하고 있으면 바쁜 거임)
-        _isBusy = _isAttacking || _isRolling || _isParrying;
-    }
-
-    private void Move()
-    {
-        if(_isHit) return;
-        
-        // 1. 입력값 읽기 (공격 중이어도 방향키 입력은 받음 -> 회전을 위해)
-        _inputMove = _inputActions.Player.Move.ReadValue<Vector2>();
-        bool isSprinting = _inputActions.Player.Sprint.IsPressed();
-
-
-        // 2. 방향 벡터 계산
+        // 1. 방향 벡터 계산
         Vector3 moveDirection = Vector3.zero;
         if (_inputMove != Vector2.zero)
         {
@@ -145,159 +223,180 @@ public class PlayerController : MonoBehaviour
             Vector3 right = cameraTransform.right;
             forward.y = 0f; right.y = 0f;
             forward.Normalize(); right.Normalize();
-
             moveDirection = (forward * _inputMove.y + right * _inputMove.x).normalized;
         }
 
-        // ====================================================
-        // ★ [핵심] 회전(Rotation) 로직 분리
-        // ====================================================
-        
-        if (_isRolling || _isParrying)
+        // 2. 회전
+        if (moveDirection != Vector3.zero)
         {
-            // Case A: 구르기 & 패링 -> "절대 회전 금지"
-            // (입력 방향 무시하고 가던 방향 그대로 감)
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
-        else if (_isAttacking)
+
+        // 3. 이동
+        float targetSpeed = (_inputMove == Vector2.zero) ? 0.0f : (_inputActions.Player.Sprint.IsPressed() ? sprintSpeed : moveSpeed);
+        Vector3 horizontalMove = moveDirection * targetSpeed;
+        Vector3 finalMove = horizontalMove + _verticalVelocity;
+
+        _controller.Move(finalMove * Time.deltaTime);
+
+        // 4. 애니메이션 속도
+        Vector3 horizontalVelocity = new Vector3(_controller.velocity.x, 0, _controller.velocity.z);
+        animator.SetFloat(AnimID_Speed, horizontalVelocity.magnitude, 0.1f, Time.deltaTime);
+    }
+
+    // 공격 중에는 느리게 방향 전환 (Tracking)
+    private void UpdateAttackRotation()
+    {
+        if (_inputMove != Vector2.zero)
         {
-            // Case B: 공격 -> "느린 회전 허용 (Tracking)"
-            // (공격 중에 방향키를 누르면 그쪽으로 천천히 틂)
-            if (_inputMove != Vector2.zero)
+            Vector3 forward = cameraTransform.forward;
+            Vector3 right = cameraTransform.right;
+            forward.y = 0f; right.y = 0f;
+            Vector3 dir = (forward * _inputMove.y + right * _inputMove.x).normalized;
+
+            if (dir != Vector3.zero)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-                // 평소보다 5배 느리게(0.2f) 회전시켜서 묵직함 부여
+                Quaternion targetRotation = Quaternion.LookRotation(dir);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, (rotationSpeed * 0.2f) * Time.deltaTime);
             }
         }
-        else
-        {
-            // Case C: 평상시 -> "빠릿빠릿한 회전"
-            if (_inputMove != Vector2.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-            }
-        }
-        // ====================================================
-        // ★ 이동(Position) 로직 분리
-        // ====================================================
-
-        if (_isBusy)
-        {
-            // 공격, 구르기, 패링 중에는 "코드로 이동 금지"
-            // (대신 Root Motion이 캐릭터를 밀어줌)
-        }
-        else
-        {
-            // 평상시엔 코드로 이동
-            float targetSpeed = (_inputMove == Vector2.zero) ? 0.0f : (_inputActions.Player.Sprint.IsPressed() ? sprintSpeed : moveSpeed);
-            Vector3 horizontalMove = moveDirection * targetSpeed;
-            Vector3 finalMove = horizontalMove + _verticalVelocity;
-
-            _controller.Move(finalMove * Time.deltaTime);
-        }
-
-        // 4. 애니메이션 파라미터 업데이트
-        if (animator != null)
-        {
-            Vector3 horizontalVelocity = new Vector3(_controller.velocity.x, 0, _controller.velocity.z);
-            float currentSpeed = horizontalVelocity.magnitude;
-            animator.SetFloat(AnimID_Speed, currentSpeed, 0.1f, Time.deltaTime);
-            animator.SetBool(AnimID_IsGrounded, _isGrounded);
-        }
     }
 
-    // Animator의 "Apply Root Motion"이 체크되어 있으면 이 함수가 자동으로 실행됨
+    // --- 루트 모션 처리 (Locomotion 아닐 때만 작동) ---
     private void OnAnimatorMove()
     {
-        // 공격 중에만 애니메이션의 움직임(Root Motion)을 적용
-        if (_isBusy && _controller != null && animator != null)
+        // Locomotion 상태가 아닐 때(공격, 구르기 등)는 애니메이션이 이동을 주도
+        if (currentState != PlayerState.Locomotion && _controller != null && animator != null)
         {
-            // 1. 애니메이션이 이번 프레임에 움직인 거리(deltaPosition)를 가져옴
             Vector3 rootMotion = animator.deltaPosition;
-
-            // 2. Y축(중력)은 별도로 계산한 값을 덮어씌움 (안 그러면 공중부양 함)
-            rootMotion.y = _verticalVelocity.y * Time.deltaTime;
-
-            // 3. 캐릭터 컨트롤러를 통해 이동시킴
+            rootMotion.y = _verticalVelocity.y * Time.deltaTime; // 중력 적용
             _controller.Move(rootMotion);
         }
     }
 
+    // --- 입력 이벤트 처리 ---
+
     private void OnJump(InputAction.CallbackContext context)
     {
-        // 공격 중엔 점프 불가
-        if (_isGrounded && !_isBusy)
+        // Locomotion 상태일 때만 점프 가능
+        if (currentState == PlayerState.Locomotion && _isGrounded)
         {
             _verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-            if (animator != null) animator.SetTrigger(AnimID_Jump);
+            animator.SetTrigger(AnimID_Jump);
+        }
+    }
+
+    private void OnRoll(InputAction.CallbackContext context)
+    {
+        if (currentState == PlayerState.Locomotion && _isGrounded)
+        {
+            ChangeState(PlayerState.Roll);
         }
     }
 
     private void OnAttack(InputAction.CallbackContext context)
     {
-        if (_isGrounded && animator != null)
-        {
-            animator.SetTrigger(AnimID_DoAttack);
-        }
-    }
-    // 구르기 입력 처리
-    private void OnRoll(InputAction.CallbackContext context)
-    {
-        // 땅에 있고, 다른 행동 중이 아닐 때만 구름 (캔슬 구르기는 나중에 구현)
-        if (_isGrounded && !_isBusy)
-        {
-            // 구르기 직전에, 입력한 방향을 바라보게 강제로 돌려줌 (중요!)
-            // 안 그러면 뒤로 구르려는데 앞으로 구르는 참사가 일어남
-            if (_inputMove != Vector2.zero)
-            {
-                Vector3 forward = cameraTransform.forward; Vector3 right = cameraTransform.right;
-                forward.y = 0; right.y = 0;
-                Vector3 targetDir = (forward * _inputMove.y + right * _inputMove.x).normalized;
-                transform.rotation = Quaternion.LookRotation(targetDir);
-            }
+        if (!_isGrounded) return; // 공중 공격 제외
 
-            animator.SetTrigger(AnimID_Roll);
+        // 1. 대기/이동 중일 때 -> 첫 공격 시작
+        if (currentState == PlayerState.Locomotion)
+        {
+            _comboStep = 0; // 콤보 초기화
+            _comboInputReceived = false;
+            ChangeState(PlayerState.Attack);
+        }
+        // 2. 이미 공격 중일 때 -> 다음 콤보 예약
+        else if (currentState == PlayerState.Attack)
+        {
+            // 아직 콤보 입력이 안 들어왔다면 접수
+            if (!_comboInputReceived)
+            {
+                Debug.Log($"콤보 예약됨! (Step: {_comboStep + 1})");
+                _comboInputReceived = true;
+            }
         }
     }
-    // 패링 입력 처리
+
     private void OnParry(InputAction.CallbackContext context)
     {
-        if (_isGrounded && !_isBusy)
+        if (currentState == PlayerState.Locomotion && _isGrounded)
         {
-            animator.SetTrigger(AnimID_Parry);
+            ChangeState(PlayerState.Parry);
         }
     }
-    // 죽었을 때 실행될 함수
-    private void OnDie()
-    {
-        _isDead = true;
-        animator.SetBool(AnimID_IsDead, true);// 사망 애니메이션 재생 (나중에 추가)
-        _inputActions.Player.Disable(); // 조작 불능 만들기
-    }
+
+    // --- 피격 및 무적 로직 ---
+
     private void OnHit()
     {
-        // 죽은 상태면 피격 모션 재생 안 함 (사망 모션이 우선)
-        if (_isDead) return;
+        if (currentState == PlayerState.Die) return;
 
-        // 애니메이터에게 "피격 모션 재생해!" 명령
-        animator.SetTrigger(AnimID_DoHit);
-        _isHit = true;
-    }
-    public void EndHit()
-    {
-        _isHit = false;
+        // ★ [핵심] 구르기 상태라면 무적! (데미지/피격모션 무시)
+        if (currentState == PlayerState.Roll)
+        {
+            Debug.Log("구르기 무적(i-frame)으로 회피했습니다!");
+            return;
+        }
+
+        // 그 외 상태면 피격 처리
+        ChangeState(PlayerState.Hit);
     }
 
-    // 무기 애니메이션
-    // 애니메이션 이벤트용 함수 (무기 켜기)
-    public void WeaponEnable()
+    private void OnDie()
     {
-        if (myWeapon != null) myWeapon.EnableHitbox();
+        ChangeState(PlayerState.Die);
     }
-    // 애니메이션 이벤트용 함수 (무기 끄기)
-    public void WeaponDisable()
+
+    // --- Helper Functions ---
+
+    // 구르기 시작할 때 입력 방향으로 몸을 확 돌려주는 함수
+    private void RotateToInputDirection()
     {
-        if (myWeapon != null) myWeapon.DisableHitbox();
+        if (_inputMove != Vector2.zero)
+        {
+            Vector3 forward = cameraTransform.forward;
+            Vector3 right = cameraTransform.right;
+            forward.y = 0; right.y = 0;
+            Vector3 targetDir = (forward * _inputMove.y + right * _inputMove.x).normalized;
+            transform.rotation = Quaternion.LookRotation(targetDir);
+        }
     }
+
+    // --- Animation Events (애니메이션 클립에 설정 필요) ---
+
+    // 1. 행동 종료 -> Locomotion 복귀
+    public void OnAnimationEnd()
+    {
+        if (currentState == PlayerState.Attack)
+        {
+            // [수정된 로직]
+            // 입력이 들어왔고(AND) + 현재 스텝이 마지막이 아닐 때만 다음 콤보로!
+            // 예: 3타 공격이면, step 0 -> 1(가능), 1 -> 2(가능), 2 -> 3(불가능, 종료)
+            if (_comboInputReceived && _comboStep < maxComboCount - 1)
+            {
+                _comboStep++;
+                _comboInputReceived = false;
+
+                // 다음 공격 실행
+                animator.SetInteger(AnimID_ComboStep, _comboStep);
+                animator.SetTrigger(AnimID_DoAttack);
+            }
+            else
+            {
+                // 입력이 없거나, 이미 막타(2타)까지 다 쳤으면 -> 종료
+                _comboStep = 0; // (선택) 여기서 초기화해주면 안전함
+                ChangeState(PlayerState.Locomotion);
+            }
+        }
+        else
+        {
+            ChangeState(PlayerState.Locomotion);
+        }
+    }
+    
+    // (기존 이벤트들 유지)
+    public void EndHit() => ChangeState(PlayerState.Locomotion);
+    public void WeaponEnable() => myWeapon?.EnableHitbox();
+    public void WeaponDisable() => myWeapon?.DisableHitbox();
 }
