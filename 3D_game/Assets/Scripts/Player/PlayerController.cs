@@ -14,6 +14,11 @@ public class PlayerController : MonoBehaviour
     [Header("References")]
     public Transform cameraTransform;
     public Animator animator;
+    // 내 몸상태 스크립트 연결
+    private CharacterStats _stats;
+
+    [Header("Combat")]
+    public Weapon myWeapon; // 무기 스크립트 연결용
 
     // 내부 변수
     private CharacterController _controller;
@@ -23,18 +28,28 @@ public class PlayerController : MonoBehaviour
     private bool _isGrounded;
     
     // 상태 체크용 변수
+    private bool _isBusy;
     private bool _isAttacking;
+    private bool _isRolling;
+    private bool _isParrying;
+    private bool _isDead = false;
+    private bool _isHit = false;
 
     // 애니메이션 해시
-    private static readonly int AnimID_Speed = Animator.StringToHash("Speed");
-    private static readonly int AnimID_IsGrounded = Animator.StringToHash("IsGrounded");
-    private static readonly int AnimID_Jump = Animator.StringToHash("Jump");
+    private static readonly int AnimID_Speed = Animator.StringToHash("speed");
+    private static readonly int AnimID_IsGrounded = Animator.StringToHash("isGrounded");
+    private static readonly int AnimID_Jump = Animator.StringToHash("jump");
     private static readonly int AnimID_DoAttack = Animator.StringToHash("doAttack");
+    private static readonly int AnimID_Roll = Animator.StringToHash("doRoll");
+    private static readonly int AnimID_IsDead = Animator.StringToHash("isDead");
+    private static readonly int AnimID_DoHit = Animator.StringToHash("doHit");
+    private static readonly int AnimID_Parry = Animator.StringToHash("doParry");
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
         _inputActions = new PlayerControls();
+        _stats = GetComponent<CharacterStats>();
 
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
@@ -45,6 +60,13 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Enable();
         _inputActions.Player.Jump.performed += OnJump;
         _inputActions.Player.Attack.performed += OnAttack;
+        _inputActions.Player.Roll.performed += OnRoll;
+        _inputActions.Player.Parry.performed += OnParry;
+        if (_stats != null)
+        {
+            _stats.OnTakeDamage.AddListener(OnHit); // 맞으면 OnHit 실행
+            _stats.OnDeath.AddListener(OnDie);      // 죽으면 OnDie 실행
+        }
     }
 
     private void OnDisable()
@@ -52,10 +74,20 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Disable();
         _inputActions.Player.Jump.performed -= OnJump;
         _inputActions.Player.Attack.performed -= OnAttack;
+        _inputActions.Player.Roll.performed -= OnRoll;
+        _inputActions.Player.Parry.performed -= OnParry;
+        // 연결 해제 
+        if (_stats != null)
+        {
+            _stats.OnTakeDamage.RemoveListener(OnHit);
+            _stats.OnDeath.RemoveListener(OnDie);
+        }
     }
 
     private void Update()
     {
+        if (_isDead) return; // 죽었으면 아무것도 안 함
+
         _isGrounded = _controller.isGrounded;
 
         // 중력 계산
@@ -66,38 +98,44 @@ public class PlayerController : MonoBehaviour
         _verticalVelocity.y += gravity * Time.deltaTime;
 
         // 공격 상태 매 프레임 갱신
-        CheckAttackState();
+        CheckActionState();
 
         // 공격 중이면 Root Motion을 켜서 애니메이션이 이동을 주도하게 하고,
         // 공격이 아니면 꺼서 코드가 이동을 주도하게 함.
         if (animator != null)
         {
-            animator.applyRootMotion = _isAttacking;
+            animator.applyRootMotion = _isBusy;
         }
 
         // 이동 처리
         Move();
     }
 
-    // 현재 공격 중인지 태그로 확인
-    private void CheckAttackState()
+    // 현재 애니메이션 태그로 확인
+    private void CheckActionState() 
     {
-        if (animator != null)
-        {
-            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-            _isAttacking = stateInfo.IsTag("Attack");
-        }
-        else
-        {
-            _isAttacking = false;
-        }
+        if (animator == null) return;
+
+        // 1. 현재 애니메이터 상태 정보 가져오기
+        var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+
+        // 2. 각 태그별 상태 저장 (멤버 변수에 기록)
+        _isAttacking = stateInfo.IsTag("Attack");
+        _isRolling   = stateInfo.IsTag("Roll");
+        _isParrying  = stateInfo.IsTag("Parry");
+
+        // 3. 통합 상태 갱신 (하나라도 하고 있으면 바쁜 거임)
+        _isBusy = _isAttacking || _isRolling || _isParrying;
     }
 
     private void Move()
     {
+        if(_isHit) return;
+        
         // 1. 입력값 읽기 (공격 중이어도 방향키 입력은 받음 -> 회전을 위해)
         _inputMove = _inputActions.Player.Move.ReadValue<Vector2>();
         bool isSprinting = _inputActions.Player.Sprint.IsPressed();
+
 
         // 2. 방향 벡터 계산
         Vector3 moveDirection = Vector3.zero;
@@ -111,37 +149,52 @@ public class PlayerController : MonoBehaviour
             moveDirection = (forward * _inputMove.y + right * _inputMove.x).normalized;
         }
 
-        // 3. 이동 실행 분기 (★ 핵심 로직)
-        if (_isAttacking)
+        // ====================================================
+        // ★ [핵심] 회전(Rotation) 로직 분리
+        // ====================================================
+        
+        if (_isRolling || _isParrying)
         {
-            // [공격 중일 때]
-            // 코드로 이동하지 않음 -> _controller.Move 호출 안 함
-            // 대신 아래 OnAnimatorMove()가 호출되어 애니메이션이 캐릭터를 밈.
-            
-            // 단, 회전은 허용 (소울류처럼 공격 방향 조절)
+            // Case A: 구르기 & 패링 -> "절대 회전 금지"
+            // (입력 방향 무시하고 가던 방향 그대로 감)
+        }
+        else if (_isAttacking)
+        {
+            // Case B: 공격 -> "느린 회전 허용 (Tracking)"
+            // (공격 중에 방향키를 누르면 그쪽으로 천천히 틂)
             if (_inputMove != Vector2.zero)
             {
-                // 공격 중엔 회전을 약간 느리게 해서 무게감 주기 (0.5배)
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, (rotationSpeed * 0.5f) * Time.deltaTime);
+                // 평소보다 5배 느리게(0.2f) 회전시켜서 묵직함 부여
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, (rotationSpeed * 0.2f) * Time.deltaTime);
             }
         }
         else
         {
-            // [평소 상태]
-            // 코드로 직접 이동 시킴 (W,A,S,D)
-            float targetSpeed = (_inputMove == Vector2.zero) ? 0.0f : (isSprinting ? sprintSpeed : moveSpeed);
-            Vector3 horizontalMove = moveDirection * targetSpeed;
-            Vector3 finalMove = horizontalMove + _verticalVelocity; // 중력 포함
-
-            _controller.Move(finalMove * Time.deltaTime);
-
-            // 평소 회전
+            // Case C: 평상시 -> "빠릿빠릿한 회전"
             if (_inputMove != Vector2.zero)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
             }
+        }
+        // ====================================================
+        // ★ 이동(Position) 로직 분리
+        // ====================================================
+
+        if (_isBusy)
+        {
+            // 공격, 구르기, 패링 중에는 "코드로 이동 금지"
+            // (대신 Root Motion이 캐릭터를 밀어줌)
+        }
+        else
+        {
+            // 평상시엔 코드로 이동
+            float targetSpeed = (_inputMove == Vector2.zero) ? 0.0f : (_inputActions.Player.Sprint.IsPressed() ? sprintSpeed : moveSpeed);
+            Vector3 horizontalMove = moveDirection * targetSpeed;
+            Vector3 finalMove = horizontalMove + _verticalVelocity;
+
+            _controller.Move(finalMove * Time.deltaTime);
         }
 
         // 4. 애니메이션 파라미터 업데이트
@@ -158,7 +211,7 @@ public class PlayerController : MonoBehaviour
     private void OnAnimatorMove()
     {
         // 공격 중에만 애니메이션의 움직임(Root Motion)을 적용
-        if (_isAttacking && _controller != null && animator != null)
+        if (_isBusy && _controller != null && animator != null)
         {
             // 1. 애니메이션이 이번 프레임에 움직인 거리(deltaPosition)를 가져옴
             Vector3 rootMotion = animator.deltaPosition;
@@ -174,7 +227,7 @@ public class PlayerController : MonoBehaviour
     private void OnJump(InputAction.CallbackContext context)
     {
         // 공격 중엔 점프 불가
-        if (_isGrounded && !_isAttacking)
+        if (_isGrounded && !_isBusy)
         {
             _verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             if (animator != null) animator.SetTrigger(AnimID_Jump);
@@ -187,5 +240,64 @@ public class PlayerController : MonoBehaviour
         {
             animator.SetTrigger(AnimID_DoAttack);
         }
+    }
+    // 구르기 입력 처리
+    private void OnRoll(InputAction.CallbackContext context)
+    {
+        // 땅에 있고, 다른 행동 중이 아닐 때만 구름 (캔슬 구르기는 나중에 구현)
+        if (_isGrounded && !_isBusy)
+        {
+            // 구르기 직전에, 입력한 방향을 바라보게 강제로 돌려줌 (중요!)
+            // 안 그러면 뒤로 구르려는데 앞으로 구르는 참사가 일어남
+            if (_inputMove != Vector2.zero)
+            {
+                Vector3 forward = cameraTransform.forward; Vector3 right = cameraTransform.right;
+                forward.y = 0; right.y = 0;
+                Vector3 targetDir = (forward * _inputMove.y + right * _inputMove.x).normalized;
+                transform.rotation = Quaternion.LookRotation(targetDir);
+            }
+
+            animator.SetTrigger(AnimID_Roll);
+        }
+    }
+    // 패링 입력 처리
+    private void OnParry(InputAction.CallbackContext context)
+    {
+        if (_isGrounded && !_isBusy)
+        {
+            animator.SetTrigger(AnimID_Parry);
+        }
+    }
+    // 죽었을 때 실행될 함수
+    private void OnDie()
+    {
+        _isDead = true;
+        animator.SetBool(AnimID_IsDead, true);// 사망 애니메이션 재생 (나중에 추가)
+        _inputActions.Player.Disable(); // 조작 불능 만들기
+    }
+    private void OnHit()
+    {
+        // 죽은 상태면 피격 모션 재생 안 함 (사망 모션이 우선)
+        if (_isDead) return;
+
+        // 애니메이터에게 "피격 모션 재생해!" 명령
+        animator.SetTrigger(AnimID_DoHit);
+        _isHit = true;
+    }
+    public void EndHit()
+    {
+        _isHit = false;
+    }
+
+    // 무기 애니메이션
+    // 애니메이션 이벤트용 함수 (무기 켜기)
+    public void WeaponEnable()
+    {
+        if (myWeapon != null) myWeapon.EnableHitbox();
+    }
+    // 애니메이션 이벤트용 함수 (무기 끄기)
+    public void WeaponDisable()
+    {
+        if (myWeapon != null) myWeapon.DisableHitbox();
     }
 }
