@@ -56,7 +56,7 @@ public class Weapon : MonoBehaviour
         // 4. 계약서가 있는 놈(때릴 수 있는 놈)이면 때린다.
         if (target != null)
         {
-            target.TakeDamage(damage); // 데미지 전달!
+            target.TakeDamage(damage, transform.root); // 데미지 전달!
             Debug.Log($"<color=red>Hit! : {other.name}</color>");
             
             // 때린 목록에 추가 (한 번 공격에 두 번 안 맞게)

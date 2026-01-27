@@ -11,12 +11,12 @@ public class CharacterStats : MonoBehaviour, IDamageable
     // 죽었을 때 다른 스크립트들에게 "나 죽었어!"라고 방송하는 이벤트
     public UnityEvent OnDeath; 
     public UnityEvent OnTakeDamage;
-    private void Start()
+    public virtual void Start()
     {
         currentHealth = maxHealth;
     }
 
-    public virtual void TakeDamage(float damage)
+    public virtual void TakeDamage(float damage, Transform attacker = null)
     {
         if (currentHealth <= 0) return; // 이미 죽었으면 무시
 

@@ -7,6 +7,8 @@ public enum PlayerState
     Locomotion, // 대기 및 이동
     Roll,       // 구르기 (무적)
     Attack,     // 공격
+    CounterAttack, // 패링 성공 후
+    Skill,      // 스킬
     Parry,      // 패링
     Hit,        // 피격
     Die         // 사망
@@ -25,18 +27,35 @@ public class PlayerController : MonoBehaviour
     public float gravity = -20.0f;
     public float jumpHeight = 1.2f;
 
+    [Header("Stamina Costs")] // 행동별 소모량 설정
+    public float rollStaminaCost = 20f;
+    public float attackStaminaCost = 15f;
+    public float sprintStaminaCost = 10f; // 달리기 (초당 소모량)
+
     [Header("References")]
     public Transform cameraTransform;
     public Animator animator;
-    private CharacterStats _stats;
+    private PlayerStats _stats;
 
     [Header("Combat")]
     public Weapon myWeapon;
+    private float initialDamage;
 
     [Header("Combo Settings")]
     private bool _comboInputReceived = false; // 공격 중 입력이 들어왔는가?
     private int _comboStep = 0;               // 현재 몇 번째 타격인가? (0, 1, 2...)
     public int maxComboCount = 3; // 콤보가 3개라면 인덱스는 0, 1, 2
+
+    [Header("Skill Settings")]
+    public float skillCooldown = 5.0f;        // 5초 쿨타임
+    public float skillManaCost = 50.0f;       // 마나 30 소모
+    public float skillDamage = 30.0f;         // 스킬 데미지
+    private float _lastSkillTime = -10f;      // 마지막 사용 시간 (초기값은 즉시 사용 가능하게)
+
+    [Header("Parry & Counter")]
+    public float counterWindowDuration = 1.5f; // 패링 후 반격 가능한 시간
+    private bool _canCounterAttack = false;    // 현재 반격이 가능한가?
+    public float counterDamageMultiplier = 3.0f; // 반격 데미지 배율
 
     // 내부 변수
     private CharacterController _controller;
@@ -55,17 +74,22 @@ public class PlayerController : MonoBehaviour
     private static readonly int AnimID_DoHit = Animator.StringToHash("doHit");
     private static readonly int AnimID_Parry = Animator.StringToHash("doParry");
     private static readonly int AnimID_ComboStep = Animator.StringToHash("ComboStep");
+    private static readonly int AnimID_DoCounterAttack = Animator.StringToHash("doCounterAttack");
+    private static readonly int AnimID_DoSkill = Animator.StringToHash("doSkill");
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
         _inputActions = new PlayerControls();
-        _stats = GetComponent<CharacterStats>();
+        _stats = GetComponent<PlayerStats>();
 
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
     }
-
+    private void Start()
+    {
+        initialDamage = myWeapon.damage; // 초기 데미지 저장
+    }
     private void OnEnable()
     {
         _inputActions.Player.Enable();
@@ -73,6 +97,7 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Attack.performed += OnAttack;
         _inputActions.Player.Roll.performed += OnRoll;
         _inputActions.Player.Parry.performed += OnParry;
+        _inputActions.Player.Skill.performed += OnSkill;
 
         if (_stats != null)
         {
@@ -88,6 +113,7 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Attack.performed -= OnAttack;
         _inputActions.Player.Roll.performed -= OnRoll;
         _inputActions.Player.Parry.performed -= OnParry;
+        _inputActions.Player.Skill.performed -= OnSkill;
 
         if (_stats != null)
         {
@@ -144,6 +170,17 @@ public class PlayerController : MonoBehaviour
         // [Exit] 상태 나갈 때
         switch (currentState)
         {
+            case PlayerState.Skill:
+                WeaponDisable();
+                // 데미지 원상복구 (안전을 위해 배율 나누기 대신 원래값 복구 방식 추천)
+                if (myWeapon != null) myWeapon.damage = initialDamage;
+                break;
+
+            case PlayerState.CounterAttack:
+                WeaponDisable();
+                // 무기 데미지 원상복구 
+                if (myWeapon != null) myWeapon.damage = initialDamage;
+                break;
             case PlayerState.Attack:
                 WeaponDisable(); // 공격 끊기면 무기 끄기
                 break;
@@ -174,6 +211,30 @@ public class PlayerController : MonoBehaviour
                 animator.SetTrigger(AnimID_Roll);
                 // ★ 구르기 방향 보정 (입력한 쪽을 보고 구르도록)
                 RotateToInputDirection();
+                break;
+
+            case PlayerState.Skill:
+                _lastSkillTime = Time.time; // 쿨타임 갱신
+                
+                animator.applyRootMotion = true;
+                animator.SetTrigger(AnimID_DoSkill); // 점프 공격 애니메이션
+
+                // 데미지 뻥튀기
+                if (myWeapon != null) myWeapon.damage = skillDamage;
+                break;
+
+            case PlayerState.CounterAttack:
+                animator.applyRootMotion = true;
+                
+                // 반격 애니메이션 재생
+                animator.SetTrigger(AnimID_DoCounterAttack);
+
+                // ★ 데미지 뻥튀기
+                if (myWeapon != null) myWeapon.damage *= counterDamageMultiplier;
+
+                // 반격 기회 소모 (한 번만 때리게)
+                _canCounterAttack = false;
+                CancelInvoke(nameof(ResetCounterWindow));
                 break;
 
             case PlayerState.Attack:
@@ -233,8 +294,31 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // 3. 이동
-        float targetSpeed = (_inputMove == Vector2.zero) ? 0.0f : (_inputActions.Player.Sprint.IsPressed() ? sprintSpeed : moveSpeed);
+        // 이동 속도 결정 로직
+        float targetSpeed = 0.0f;
+        if (_inputMove != Vector2.zero)
+        {
+            bool isSprinting = _inputActions.Player.Sprint.IsPressed();
+            
+            // [수정] 달리기 스태미나 처리
+            if (isSprinting)
+            {
+                // 지속 소모 (deltaTime 곱해서 프레임당 소모량 계산)
+                if (_stats != null && _stats.UseStamina(sprintStaminaCost * Time.deltaTime))
+                {
+                    targetSpeed = sprintSpeed; // 스태미나 있으면 달리기
+                }
+                else
+                {
+                    targetSpeed = moveSpeed; // 없으면 강제로 걷기
+                }
+            }
+            else
+            {
+                targetSpeed = moveSpeed; // 쉬프트 안 누름
+            }
+        }
+
         Vector3 horizontalMove = moveDirection * targetSpeed;
         Vector3 finalMove = horizontalMove + _verticalVelocity;
 
@@ -269,8 +353,19 @@ public class PlayerController : MonoBehaviour
         // Locomotion 상태가 아닐 때(공격, 구르기 등)는 애니메이션이 이동을 주도
         if (currentState != PlayerState.Locomotion && _controller != null && animator != null)
         {
+            // 1. 애니메이션이 이동하려는 양(Delta Position)을 가져옴
             Vector3 rootMotion = animator.deltaPosition;
-            rootMotion.y = _verticalVelocity.y * Time.deltaTime; // 중력 적용
+
+            // 2. ★ [핵심] 카운터 어택 상태라면 이동량을 줄임
+            if (currentState == PlayerState.CounterAttack)
+            {
+                rootMotion *= 0.5f; // 0.5배
+            }
+
+            // 3. 중력 적용 (Y축은 애니메이션 무시하고 중력 법칙 따름)
+            rootMotion.y = _verticalVelocity.y * Time.deltaTime; 
+
+            // 4. 최종 이동 적용
             _controller.Move(rootMotion);
         }
     }
@@ -291,7 +386,11 @@ public class PlayerController : MonoBehaviour
     {
         if (currentState == PlayerState.Locomotion && _isGrounded)
         {
-            ChangeState(PlayerState.Roll);
+            // 스태미나 없으면 구르기 불가
+            if (_stats != null && _stats.UseStamina(rollStaminaCost))
+            {
+                ChangeState(PlayerState.Roll);
+            }
         }
     }
 
@@ -299,31 +398,109 @@ public class PlayerController : MonoBehaviour
     {
         if (!_isGrounded) return; // 공중 공격 제외
 
-        // 1. 대기/이동 중일 때 -> 첫 공격 시작
+        // 1. 패링 성공 직후라면 -> 강력한 반격!
+        if (currentState == PlayerState.Locomotion || currentState == PlayerState.Parry)
+        {
+            if (_canCounterAttack)
+            {
+                ChangeState(PlayerState.CounterAttack);
+                return;
+            }
+        }
+
+        // 2. 대기/이동 중일 때 -> 첫 공격 시작
         if (currentState == PlayerState.Locomotion)
         {
-            _comboStep = 0; // 콤보 초기화
-            _comboInputReceived = false;
-            ChangeState(PlayerState.Attack);
+            if (_stats.UseStamina(attackStaminaCost)) // 즉시 소모
+            {
+                _comboStep = 0;
+                _comboInputReceived = false;
+                ChangeState(PlayerState.Attack);
+            }
         }
-        // 2. 이미 공격 중일 때 -> 다음 콤보 예약
+        // 3. 이미 공격 중일 때 -> 다음 콤보 예약
         else if (currentState == PlayerState.Attack)
         {
-            // 아직 콤보 입력이 안 들어왔다면 접수
             if (!_comboInputReceived)
             {
-                Debug.Log($"콤보 예약됨! (Step: {_comboStep + 1})");
-                _comboInputReceived = true;
+                // [수정] UseStamina 대신 HasStamina로 확인만!
+                // "지금 당장 안 깎고, 나중에 때릴 때 깎을게. 근데 잔고는 있지?"
+                if (_stats.HasStamina(attackStaminaCost)) 
+                {
+                    Debug.Log("콤보 예약됨 (스태미나 아직 안 깎음)");
+                    _comboInputReceived = true;
+                }
             }
         }
     }
+    private void OnSkill(InputAction.CallbackContext context)
+    {
+        // 땅에 있고, 이동 중일 때만 가능 (공격 캔슬 스킬을 원하면 조건 완화 가능)
+        if (currentState != PlayerState.Locomotion || !_isGrounded) return;
 
+        // 1. 쿨타임 체크
+        if (Time.time < _lastSkillTime + skillCooldown)
+        {
+            Debug.Log($"스킬 쿨타임! ({_lastSkillTime + skillCooldown - Time.time:F1}초 남음)");
+            return;
+        }
+
+        // 2. 마나 체크
+        if (_stats != null && _stats.UseMana(skillManaCost))
+        {
+            ChangeState(PlayerState.Skill);
+        }
+    }
+    public void OnSkillImpact()
+{
+    float impactRadius = 3.0f; // 반경 3미터
+    float damage = 0;
+
+    if (myWeapon != null) damage = myWeapon.damage; // 이미 뻥튀기된 데미지 가져옴
+
+    // 1. 이펙트 생성 (있다면)
+    // Instantiate(skillVFX, transform.position + transform.forward, Quaternion.identity);
+
+    // 2. 범위 내 적 찾기
+    Collider[] hitColliders = Physics.OverlapSphere(transform.position, impactRadius);
+    foreach (var hit in hitColliders)
+    {
+        if (hit.CompareTag("Enemy"))
+        {
+            var enemyStats = hit.GetComponent<CharacterStats>();
+            if (enemyStats != null)
+            {
+                // 범위 데미지 적용
+                enemyStats.TakeDamage(damage, transform);
+                
+                // (선택) 적에게 강한 넉백이나 띄우기 효과를 주면 더 좋음!
+            }
+        }
+    }
+    
+    // 화면 흔들림(Camera Shake) 효과를 여기서 호출하면 완벽함
+}
     private void OnParry(InputAction.CallbackContext context)
     {
         if (currentState == PlayerState.Locomotion && _isGrounded)
         {
             ChangeState(PlayerState.Parry);
         }
+    }
+    // ★ Stats에서 패링 성공 시 호출할 함수
+    public void OnParrySuccess()
+    {
+        Debug.Log("<color=yellow>반격 기회 포착! (Counter Ready)</color>");
+        _canCounterAttack = true;
+        
+        // 일정 시간 뒤에 기회 박탈
+        CancelInvoke(nameof(ResetCounterWindow));
+        Invoke(nameof(ResetCounterWindow), counterWindowDuration);
+    }
+    private void ResetCounterWindow()
+    {
+        _canCounterAttack = false;
+        Debug.Log("반격 기회 종료...");
     }
 
     // --- 피격 및 무적 로직 ---
@@ -370,25 +547,39 @@ public class PlayerController : MonoBehaviour
     {
         if (currentState == PlayerState.Attack)
         {
-            // [수정된 로직]
-            // 입력이 들어왔고(AND) + 현재 스텝이 마지막이 아닐 때만 다음 콤보로!
-            // 예: 3타 공격이면, step 0 -> 1(가능), 1 -> 2(가능), 2 -> 3(불가능, 종료)
+            // 입력이 있었고, 막타가 아니라면 -> 다음 콤보 시도
             if (_comboInputReceived && _comboStep < maxComboCount - 1)
             {
-                _comboStep++;
-                _comboInputReceived = false;
+                // ★ [핵심] 여기서 실제로 스태미나 소모!
+                if (_stats != null && _stats.UseStamina(attackStaminaCost))
+                {
+                    // 결제 성공 -> 다음 공격 진행
+                    _comboStep++;
+                    _comboInputReceived = false;
 
-                // 다음 공격 실행
-                animator.SetInteger(AnimID_ComboStep, _comboStep);
-                animator.SetTrigger(AnimID_DoAttack);
+                    animator.SetInteger(AnimID_ComboStep, _comboStep);
+                    animator.SetTrigger(AnimID_DoAttack);
+                }
+                else
+                {
+                    // 결제 실패 (예약은 했는데 막상 때리려니 스태미나 부족) -> 공격 중단
+                    Debug.Log("스태미나 부족으로 콤보 중단!");
+                    _comboStep = 0;
+                    ChangeState(PlayerState.Locomotion);
+                }
             }
             else
             {
-                // 입력이 없거나, 이미 막타(2타)까지 다 쳤으면 -> 종료
-                _comboStep = 0; // (선택) 여기서 초기화해주면 안전함
+                // 입력 없거나 막타침 -> 종료
+                _comboStep = 0;
                 ChangeState(PlayerState.Locomotion);
             }
         }
+        else if (currentState == PlayerState.CounterAttack || currentState == PlayerState.Skill)
+            {
+                // 반격 끝 -> 대기 상태로
+                ChangeState(PlayerState.Locomotion);
+            }
         else
         {
             ChangeState(PlayerState.Locomotion);

@@ -7,6 +7,7 @@ public enum EnemyState
     Patrol, // 배회 (순찰)
     Chase,  // 추격
     Attack, // 공격
+    Parried, // 패링당함
     Hit,    // 피격
     Die     // 사망
 }
@@ -55,6 +56,7 @@ public class Enemy : MonoBehaviour
     private static readonly int AnimID_Hit = Animator.StringToHash("doHit");
     private static readonly int AnimID_Die = Animator.StringToHash("doDie");
     private static readonly int AnimID_AttackIndex = Animator.StringToHash("attackIndex");
+    private static readonly int AnimID_Parried = Animator.StringToHash("doParried");
 
     private void Awake()
     {
@@ -117,7 +119,7 @@ public class Enemy : MonoBehaviour
         if (currentState == newState) return;
 
         // [로그 추가] 예: "Patrol -> Chase" 처럼 출력됨
-        Debug.Log($"[Enemy] State Change: {currentState} -> {newState}");
+        // Debug.Log($"[Enemy] State Change: {currentState} -> {newState}");
         // [Exit]
         switch (currentState)
         {
@@ -125,6 +127,9 @@ public class Enemy : MonoBehaviour
                 _agent.isStopped = false; 
                 DisableAllWeapons();
                 _isJumpBoosting = false;
+                break;
+            case EnemyState.Parried: // 패링 상태 끝날 때
+                _agent.isStopped = false; // 다시 움직임 허용
                 break;
             case EnemyState.Hit:
                 _agent.isStopped = false;
@@ -157,6 +162,13 @@ public class Enemy : MonoBehaviour
                 _agent.isStopped = true;
                 _agent.velocity = Vector3.zero;
                 _animator.SetTrigger(AnimID_Hit);
+                break;
+
+            case EnemyState.Parried: // 패링당함 상태 진입
+                _agent.isStopped = true;        // 이동 정지
+                _agent.velocity = Vector3.zero; // 미끄러짐 방지
+                _animator.SetTrigger(AnimID_Parried); // 리액션 애니메이션 재생
+                DisableAllWeapons();            // 공격 판정 끄기 (공격하다 튕겨나갔으니까)
                 break;
 
             case EnemyState.Die:
@@ -273,6 +285,20 @@ public class Enemy : MonoBehaviour
             Quaternion lookRot = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.Slerp(transform.rotation, lookRot, Time.deltaTime * 5f);
         }
+    }
+    public void GetParried()
+    {
+        if (currentState == EnemyState.Die) return;
+
+        Debug.Log($"{gameObject.name}: 으악! 패링당했다!");
+        
+        // 패링 상태로 강제 전환 (FSM에 Parried 상태가 있어야 함)
+        ChangeState(EnemyState.Parried);
+    }
+    public void OnParriedEnd()
+    {
+        // 정신 차리고 다시 추격 
+        ChangeState(EnemyState.Chase);
     }
 
     // --- 물리 및 애니메이션 처리 ---
