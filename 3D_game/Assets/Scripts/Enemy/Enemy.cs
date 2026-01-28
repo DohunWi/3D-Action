@@ -84,8 +84,8 @@ public class Enemy : MonoBehaviour
     {
         if (_stats != null)
         {
-            _stats.OnTakeDamage.AddListener(OnTakeDamage);
-            _stats.OnDeath.AddListener(OnDie);
+            _stats.OnTakeDamage += OnTakeDamage;
+            _stats.OnDeath += OnDie;
         }
     }
 
@@ -93,8 +93,8 @@ public class Enemy : MonoBehaviour
     {
         if (_stats != null)
         {
-            _stats.OnTakeDamage.RemoveListener(OnTakeDamage);
-            _stats.OnDeath.RemoveListener(OnDie);
+            _stats.OnTakeDamage -= OnTakeDamage;
+            _stats.OnDeath -= OnDie;
         }
     }
 

@@ -101,8 +101,8 @@ public class PlayerController : MonoBehaviour
 
         if (_stats != null)
         {
-            _stats.OnTakeDamage.AddListener(OnHit);
-            _stats.OnDeath.AddListener(OnDie);
+            _stats.OnTakeDamage += OnHit;
+            _stats.OnDeath += OnDie;
         }
     }
 
@@ -117,8 +117,8 @@ public class PlayerController : MonoBehaviour
 
         if (_stats != null)
         {
-            _stats.OnTakeDamage.RemoveListener(OnHit);
-            _stats.OnDeath.RemoveListener(OnDie);
+            _stats.OnTakeDamage -= OnHit;
+            _stats.OnDeath -= OnDie;
         }
     }
 
@@ -523,6 +523,11 @@ public class PlayerController : MonoBehaviour
     private void OnDie()
     {
         ChangeState(PlayerState.Die);
+        // GameManager 에게 알리기
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.GameOver(); 
+        }
     }
 
     // --- Helper Functions ---

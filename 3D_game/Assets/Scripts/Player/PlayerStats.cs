@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 // CharacterStats를 상속받음
 public class PlayerStats : CharacterStats
@@ -19,27 +20,40 @@ public class PlayerStats : CharacterStats
     public float currentMana { get; private set; }
     public float manaRegenRate = 5f; // 초당 5 회복 (스태미나보다 느리게)
 
+    // ★ UI에게 보낼 신호들 (현재값, 최대값)
+    public event Action<float, float> OnManaChanged;
+    public event Action<float, float> OnStaminaChanged;
+
     // 부모의 TakeDamage를 덮어씀 (Override)
     public override void Start()
     {
         base.Start();
         currentStamina = maxStamina; // 시작 시 풀 충전
         currentMana = maxMana;
+
+        // 시작하자마자 UI 한번 갱신해줌 (꽉 찬 상태 보여주기)
+        OnManaChanged?.Invoke(currentMana, maxMana);
+        OnStaminaChanged?.Invoke(currentStamina, maxStamina);
     }
     private void Update()
     {
-        // [NEW] 스태미나 자동 회복 로직
+        // 스태미나 자동 회복 로직
         // "마지막 사용 후 딜레이(2초)가 지났고" AND "스태미나가 꽉 차지 않았다면" -> 회복
         if (Time.time > _lastStaminaUseTime + staminaRegenDelay && currentStamina < maxStamina)
         {
+            float prevStamina = currentStamina;
             currentStamina += staminaRegenRate * Time.deltaTime;
             currentStamina = Mathf.Min(currentStamina, maxStamina); // 최대치 초과 방지
+            // 값이 조금이라도 변했다면 UI 갱신
+            if (currentStamina != prevStamina)
+                OnStaminaChanged?.Invoke(currentStamina, maxStamina);
         }
         // 마나 자동 회복 (항상 천천히 회복)
         if (currentMana < maxMana)
         {
             currentMana += manaRegenRate * Time.deltaTime;
             currentMana = Mathf.Min(currentMana, maxMana);
+            OnManaChanged?.Invoke(currentMana, maxMana); // UI 갱신
         }
 
         // (테스트용) 스태미나 수치 확인
@@ -52,7 +66,9 @@ public class PlayerStats : CharacterStats
         if (currentMana >= amount)
         {
             currentMana -= amount;
-            Debug.Log($"현재 마나: {currentMana:F1}");
+            // Debug.Log($"현재 마나: {currentMana:F1}");
+            // ★ UI 알림
+            OnManaChanged?.Invoke(currentMana, maxMana);
             return true;
         }
         Debug.Log("마나가 부족합니다!");
@@ -65,7 +81,9 @@ public class PlayerStats : CharacterStats
         {
             currentStamina -= amount;
             _lastStaminaUseTime = Time.time; // 사용 시간 갱신 (회복 딜레이 리셋)
-            Debug.Log($"현재 스태미나: {currentStamina:F1}");
+            // Debug.Log($"현재 스태미나: {currentStamina:F1}");
+            // ★ UI 알림
+            OnStaminaChanged?.Invoke(currentStamina, maxStamina);
             return true;
         }
         
@@ -82,7 +100,7 @@ public class PlayerStats : CharacterStats
         // 1. 무적 판정 로직 추가
         if (playerController != null && playerController.currentState == PlayerState.Roll)
         {
-            Debug.Log("구르기 무적(i-frame)으로 데미지를 씹었습니다!");
+            Debug.Log("구르기 무적(i-frame)으로 공격을 피했습니다!");
             return; // 데미지 적용 안 하고 종료
         }
         // 2. 패링 시도
@@ -112,7 +130,7 @@ public class PlayerStats : CharacterStats
         }
 
         // 3. 무적이 아니면 부모의 원래 기능(체력 깎기) 실행
-        base.TakeDamage(damage);
+        base.TakeDamage(damage, attacker);
     }
     // 디버그용: 패링 각도를 눈으로 확인
     private void OnDrawGizmosSelected()

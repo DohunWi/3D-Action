@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.Events; // 이벤트 쓰려고 추가
+using System;
 
 public class CharacterStats : MonoBehaviour, IDamageable
 {
@@ -7,13 +7,17 @@ public class CharacterStats : MonoBehaviour, IDamageable
     public float maxHealth = 100f;
     public float currentHealth { get; protected set; } // 자식도 수정 가능하게 protected로 변경
 
-    [Header("Events")]
+    [Header("VFX")]
+    public GameObject damagePopupPrefab; 
+
     // 죽었을 때 다른 스크립트들에게 "나 죽었어!"라고 방송하는 이벤트
-    public UnityEvent OnDeath; 
-    public UnityEvent OnTakeDamage;
+    public event Action OnDeath; 
+    public event Action OnTakeDamage;    
+    public event Action<float, float> OnHealthChanged;
     public virtual void Start()
     {
         currentHealth = maxHealth;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
     public virtual void TakeDamage(float damage, Transform attacker = null)
@@ -22,8 +26,32 @@ public class CharacterStats : MonoBehaviour, IDamageable
 
         currentHealth -= damage;
         Debug.Log($"[{gameObject.name}][Stats] 남은 체력: {currentHealth}");
-        
+
+        // ★ 데미지 입을 때마다 UI 갱신 알림
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnTakeDamage?.Invoke(); // 맞았다고 알림 (나중에 피 튀기는 효과 등에 사용)
+
+        // ★ 데미지 팝업 생성
+        if (damagePopupPrefab != null)
+        {
+            // 1. 프리팹 생성 (내 머리 위쯤)
+            // Quaternion.identity = 회전 없음 (빌보드 처리 안 하면 글씨가 돌아가 있을 수 있음)
+            // 해결법: 생성 후 카메라를 보게 하거나, 아래 빌보드 팁 참고
+            Vector3 spawnPos = transform.position + Vector3.up * 1.5f + Vector3.forward*0.4f; // 머리 높이
+            
+            
+            // 약간 랜덤한 위치에 띄우기 (겹침 방지)
+            spawnPos.x += UnityEngine.Random.Range(-0.5f, 0.5f);
+            
+            GameObject popup = Instantiate(damagePopupPrefab, spawnPos, Quaternion.identity);
+            
+            // 2. 데미지 수치 전달
+            var popupScript = popup.GetComponent<DamagePopup>();
+            if (popupScript != null)
+            {
+                popupScript.Setup(damage);
+            }
+        }
 
         if (currentHealth <= 0)
         {
