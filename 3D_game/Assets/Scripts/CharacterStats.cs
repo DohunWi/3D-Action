@@ -10,7 +10,11 @@ public class CharacterStats : MonoBehaviour, IDamageable
     [Header("VFX")]
     public GameObject damagePopupPrefab; 
 
-    // 죽었을 때 다른 스크립트들에게 "나 죽었어!"라고 방송하는 이벤트
+    [Header("Audio")]
+    public AudioClip hitVoice;   // 맞았을 때 낼 소리 
+    public AudioClip deathVoice; // 죽었을 때 낼 소리 
+
+    // 다른 스크립트들에게 방송하는 이벤트
     public event Action OnDeath; 
     public event Action OnTakeDamage;    
     public event Action<float, float> OnHealthChanged;
@@ -30,6 +34,15 @@ public class CharacterStats : MonoBehaviour, IDamageable
         // ★ 데미지 입을 때마다 UI 갱신 알림
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnTakeDamage?.Invoke(); // 맞았다고 알림 (나중에 피 튀기는 효과 등에 사용)
+
+        // ====================================================
+        // 피격 사운드 재생
+        // ====================================================
+        if (hitVoice != null)
+        {
+            // Pitch를 살짝 랜덤하게 주면 훨씬 자연스러움
+            SoundManager.Instance.PlaySFX(hitVoice, transform.position, UnityEngine.Random.Range(0.9f, 1.1f)); 
+        }
 
         // ★ 데미지 팝업 생성
         if (damagePopupPrefab != null)
@@ -63,5 +76,12 @@ public class CharacterStats : MonoBehaviour, IDamageable
     {
         Debug.Log($"<color=red>{gameObject.name} 사망!</color>");
         OnDeath?.Invoke(); // "나 죽었어!" 방송 송출
+        // ====================================================
+        // 사망 사운드 재생
+        // ====================================================
+        if (deathVoice != null)
+        {
+            SoundManager.Instance.PlaySFX(deathVoice, transform.position, 1.1f);
+        }
     }
 }

@@ -31,6 +31,15 @@ public class Enemy : MonoBehaviour
     private Vector3 _startPosition;         // 순찰 중심점 (처음 태어난 위치)
     private float _patrolTimer;             // 순찰 대기 타이머
 
+    [Header("Audio Settings")]
+    public AudioSource audioSource; //
+    public AudioClip idleSound;     // (Idle)
+
+    [Header("Idle Sound Settings")]
+    public float minIdleTime = 5f;  // 최소 5초 간격
+    public float maxIdleTime = 10f; // 최대 10초 간격
+    private float _idleTimer;
+
     [Header("Combat Settings")]
     public float attackRange = 1.5f;
     public float jumpAttackRange = 4.0f;
@@ -70,14 +79,14 @@ public class Enemy : MonoBehaviour
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null) _target = player.transform;
 
-        if (leftWeapon != null) leftWeapon.damage = 10f;
-        if (rightWeapon != null) rightWeapon.damage = 10f;
-
         // 태어난 위치 기억 (여기를 중심으로 배회함)
         _startPosition = transform.position;
         
         // 시작 시 순찰로 변경 (Idle 대신)
         ChangeState(EnemyState.Patrol);
+
+        if (audioSource == null) audioSource = GetComponent<AudioSource>();
+        _idleTimer = Random.Range(minIdleTime, maxIdleTime); // 처음엔 랜덤한 시간 뒤에 울음소리 내게 설정
     }
 
     private void OnEnable()
@@ -111,6 +120,8 @@ public class Enemy : MonoBehaviour
             case EnemyState.Attack: break; 
             case EnemyState.Hit:    break;
         }
+
+        HandleIdleSound();
     }
 
     public void ChangeState(EnemyState newState)
@@ -340,7 +351,30 @@ public class Enemy : MonoBehaviour
         if (_isJumpBoosting) rootMotionVelocity *= jumpBoostMultiplier;
         _agent.velocity = rootMotionVelocity;
     }
+    // Sound Helper
+    // 1. 평소 울음소리 (Idle Growl) 처리
+    private void HandleIdleSound()
+    {
+        // 죽었거나(Die), 공격 중일 땐 소리 안 내고 싶다면 조건 추가
+        if (currentState == EnemyState.Idle || currentState == EnemyState.Patrol)
+        {
+            _idleTimer -= Time.deltaTime;
 
+            if (_idleTimer <= 0)
+            {
+                // 소리 재생 (PlayOneShot은 기존 소리를 끊지 않고 위에 덮어 씀)
+                if (audioSource != null && idleSound != null)
+                {
+                    // 피치(음높이)를 살짝 랜덤하게 주면 더 자연스러운 괴물 소리가 됨
+                    audioSource.pitch = Random.Range(0.9f, 1.1f);
+                    audioSource.PlayOneShot(idleSound);
+                }
+
+                // 다음 울음소리 시간 리셋
+                _idleTimer = Random.Range(minIdleTime, maxIdleTime);
+            }
+        }
+    }
     public void OnTakeDamage()
     {
         ChangeState(EnemyState.Hit);

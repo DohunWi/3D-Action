@@ -15,7 +15,7 @@ public class PlayerStats : CharacterStats
     public float staminaRegenDelay = 2.0f; // 스태미나 쓴 후 회복 시작까지 딜레이
     private float _lastStaminaUseTime; // 마지막 사용 시간 기록용
 
-    [Header("Mana Settings")] // [NEW] 마나 설정
+    [Header("Mana Settings")] // 마나 설정
     public float maxMana = 100f;
     public float currentMana { get; private set; }
     public float manaRegenRate = 5f; // 초당 5 회복 (스태미나보다 느리게)
