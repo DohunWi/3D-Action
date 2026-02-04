@@ -10,14 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5c0b1ebfcf27442e09a77d90212f2b23, type: 3}
-  m_Name: Sword
+  m_Name: Mutant_left
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
-  weaponName: Sword
-  description: Iron
-  damage: 10
+  weaponName: Mutant_L
+  description: 
+  damage: 15
   attackRange: 1.5
-  swingSound: {fileID: 8300000, guid: ef77d2b0adf1347c3b729a6280a716d5, type: 3}
-  hitSound: {fileID: 8300000, guid: 13bf4188061b747808edfb9044cb2c5c, type: 3}
-  criticalHitSound: {fileID: 8300000, guid: a3961c285bdbf47929539a13b017b845, type: 3}
+  comboMultipliers:
+  - 1
+  swingSound: {fileID: 0}
+  hitSound: {fileID: 0}
+  criticalHitSound: {fileID: 0}
   hitVFX: {fileID: 0}
   cameraShake: 0.1

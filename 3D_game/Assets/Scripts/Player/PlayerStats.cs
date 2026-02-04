@@ -124,6 +124,9 @@ public class PlayerStats : CharacterStats
                     // B. 플레이어에게 반격 기회 부여
                     playerController.OnParrySuccess();
 
+                    // C. 패링 연출 (Juice)
+                    GameFeelManager.Instance.DoParryEffect();
+
                     return; // 데미지 0
                 }
             }

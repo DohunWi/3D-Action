@@ -47,9 +47,7 @@ public class PlayerController : MonoBehaviour
     public int maxComboCount = 3; // 콤보가 3개라면 인덱스는 0, 1, 2
 
     [Header("Skill Settings")]
-    public float skillCooldown = 5.0f;        // 5초 쿨타임
-    public float skillManaCost = 50.0f;       // 마나 30 소모
-    public float skillDamage = 30.0f;         // 스킬 데미지
+    public SkillData activeSkill; // SO-SkillData
     private float _lastSkillTime = -10f;      // 마지막 사용 시간 (초기값은 즉시 사용 가능하게)
 
     [Header("Parry & Counter")]
@@ -90,6 +88,7 @@ public class PlayerController : MonoBehaviour
     private static readonly int AnimID_InputX = Animator.StringToHash("InputX");
     private static readonly int AnimID_InputY = Animator.StringToHash("InputY");
     private static readonly int AnimID_IsCountering = Animator.StringToHash("isCountering");
+    private int AnimID_SkillAnimHash;
 
     private void Awake()
     {
@@ -225,6 +224,7 @@ public class PlayerController : MonoBehaviour
                 break;
             case PlayerState.Attack:
                 WeaponDisable(); // 공격 끊기면 무기 끄기
+                if (myWeapon != null) myWeapon.damageMultiplier = 1.0f;
                 break;
         }
 
@@ -259,10 +259,11 @@ public class PlayerController : MonoBehaviour
                 _lastSkillTime = Time.time; // 쿨타임 갱신
                 
                 animator.applyRootMotion = true;
-                animator.SetTrigger(AnimID_DoSkill); // 점프 공격 애니메이션
+
+                animator.SetTrigger(AnimID_SkillAnimHash); // 스킬 애니메이션
 
                 // 데미지 뻥튀기
-                if (myWeapon != null) myWeapon.damageMultiplier = 2.5f;
+                // if (myWeapon != null) myWeapon.damageMultiplier = 2.5f;
                 break;
 
             case PlayerState.CounterAttack:
@@ -272,17 +273,14 @@ public class PlayerController : MonoBehaviour
                 animator.SetTrigger(AnimID_DoCounterAttack);
                 animator.ResetTrigger(AnimID_DoAttack);
 
-                // ★ 데미지 뻥튀기
-                // if (myWeapon != null) myWeapon.damageMultiplier = 2.0f;
                 animator.SetBool(AnimID_IsCountering, true);
-                // // 반격 기회 소모 (한 번만 때리게)
-                // _canCounterAttack = false;
-                // animator.SetBool(AnimID_CanCounterAttack, false);
-                // CancelInvoke(nameof(ResetCounterWindow));
                 break;
 
             case PlayerState.Attack:
                 animator.applyRootMotion = true;
+
+                // 첫 1타 배율 초기화
+                if (myWeapon != null) myWeapon.damageMultiplier = GetCurrentComboMultiplier(); // 1.0f
                 
                 // ★ 콤보 단계에 따라 다른 애니메이션 재생
                 // (Animator에 파라미터로 "ComboStep" int형이나, 각각의 Trigger가 필요함)
@@ -349,7 +347,7 @@ public class PlayerController : MonoBehaviour
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.deltaTime * 15f);
             }
 
-            // ★ [추가] 2. 실제 이동 로직 (이 부분이 비어있었습니다!)
+            // 2. 실제 이동 로직 
             // 캐릭터가 이미 적을 보고 있으므로, transform.right/forward를 기준으로 이동합니다.
             Vector3 strafeDirection = (transform.right * inputX + transform.forward * inputY).normalized;
             
@@ -526,17 +524,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // // 2. 대기/이동 중일 때 -> 첫 공격 시작
-        // if (currentState == PlayerState.Locomotion)
-        // {
-        //     if (_stats.UseStamina(attackStaminaCost)) // 즉시 소모
-        //     {
-        //         _comboStep = 0;
-        //         _comboInputReceived = false;
-        //         ChangeState(PlayerState.Attack);
-        //     }
-        // }
-        // 3. 이미 공격 중일 때 -> 다음 콤보 예약
+        // 2. 이미 공격 중일 때 -> 다음 콤보 예약
         else if (currentState == PlayerState.Attack)
         {
             if (!_comboInputReceived)
@@ -551,53 +539,96 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+    // 콤보 배율을 안전하게 가져오는 헬퍼 함수
+    private float GetCurrentComboMultiplier()
+    {
+        // 1. 데이터가 없거나 리스트가 비었으면 기본 1배
+        if (myWeapon == null || myWeapon.weaponData == null) return 1.0f;
+        var multipliers = myWeapon.weaponData.comboMultipliers;
+        if (multipliers == null || multipliers.Count == 0) return 1.0f;
+
+        // 2. 현재 콤보 스텝이 리스트 범위 안인지 체크
+        if (_comboStep < multipliers.Count)
+        {
+            return multipliers[_comboStep];
+        }
+        else
+        {
+            // 3. 만약 리스트보다 콤보가 길면? -> 마지막 설정값 유지 (혹은 1.0f)
+            return multipliers[multipliers.Count - 1];
+        }
+    }
     private void OnSkill(InputAction.CallbackContext context)
     {
+        if (activeSkill == null) return;
         // 땅에 있고, 이동 중일 때만 가능 (공격 캔슬 스킬을 원하면 조건 완화 가능)
         if (currentState != PlayerState.Locomotion || !_isGrounded) return;
-
+        
         // 1. 쿨타임 체크
-        if (Time.time < _lastSkillTime + skillCooldown)
+        if (Time.time < _lastSkillTime + activeSkill.cooldown)
         {
-            Debug.Log($"스킬 쿨타임! ({_lastSkillTime + skillCooldown - Time.time:F1}초 남음)");
+            Debug.Log($"스킬 쿨타임! ({_lastSkillTime + activeSkill.cooldown - Time.time:F1}초 남음)");
             return;
         }
-
-        // 2. 마나 체크
-        if (_stats != null && _stats.UseMana(skillManaCost))
+        // 스킬 트리거 가져오기
+        if (!string.IsNullOrEmpty(activeSkill.animTriggerName))
         {
+            AnimID_SkillAnimHash = Animator.StringToHash(activeSkill.animTriggerName);
+        }
+        else
+        {
+            Debug.LogWarning($"[{activeSkill.skillName}] 스킬에 애니메이션 이름이 없습니다!");
+        }
+        // 2. 마나 체크 (데이터에서 가져옴)
+        if (_stats != null && _stats.UseMana(activeSkill.manaCost))
+        {
+            // 시전 사운드 재생
+            if (activeSkill.castSound != null)
+                SoundManager.Instance.PlayPlayerSFX(activeSkill.castSound, 1.0f);
+            
+            // 시전 이펙트 
+            if (activeSkill.castVFX != null)
+                Instantiate(activeSkill.castVFX, transform.position, transform.rotation);
+
             ChangeState(PlayerState.Skill);
         }
     }
     public void OnSkillImpact()
-{
-    float impactRadius = 3.0f; // 반경 3미터
-    float damage = 0;
-
-    if (myWeapon != null) damage = myWeapon.damage; // 이미 뻥튀기된 데미지 가져옴
-
-    // 1. 이펙트 생성 (있다면)
-    // Instantiate(skillVFX, transform.position + transform.forward, Quaternion.identity);
-
-    // 2. 범위 내 적 찾기
-    Collider[] hitColliders = Physics.OverlapSphere(transform.position, impactRadius);
-    foreach (var hit in hitColliders)
     {
-        if (hit.CompareTag("Enemy"))
+        if (activeSkill == null) return;
+        float finalDamage = activeSkill.damage;
+        if (myWeapon != null) finalDamage += myWeapon.damage;
+
+       // 1. 타격/폭발 이펙트 (내 위치 혹은 타겟 위치)
+        if (activeSkill.impactVFX != null)
+             Instantiate(activeSkill.impactVFX, transform.position + transform.forward, Quaternion.identity);
+
+        // 2. ★ 타격 사운드 재생 
+        if (activeSkill.impactSound != null)
+            SoundManager.Instance.PlayPlayerSFX(activeSkill.impactSound, 2.0f);
+
+        // 3. camera impulse    
+        if (activeSkill.impulseDefinition != null)
         {
-            var enemyStats = hit.GetComponent<CharacterStats>();
-            if (enemyStats != null)
+            // Impulse 생성 (내 위치에서, 기본 속도 Vector3.down 등으로 설정 가능)
+            activeSkill.impulseDefinition.CreateEvent(transform.position, Vector3.down);
+        }
+        // 4. 범위 공격 판정 (데이터의 반경 사용)
+        Collider[] hitColliders = Physics.OverlapSphere(transform.position, activeSkill.impactRadius);
+        foreach (var hit in hitColliders)
+        {
+            if (hit.CompareTag("Enemy"))
             {
-                // 범위 데미지 적용
-                enemyStats.TakeDamage(damage, transform);
-                Debug.Log($"{damage}데미지를 입혔습니다.");
-                // (선택) 적에게 강한 넉백이나 띄우기 효과를 주면 더 좋음!
+                var enemyStats = hit.GetComponent<CharacterStats>();
+                if (enemyStats != null)
+                {
+                    enemyStats.TakeDamage(finalDamage, transform);
+                }
             }
         }
+        
+        // CameraShake.Instance.Shake(0.5f);
     }
-    
-    // 화면 흔들림(Camera Shake) 효과를 여기서 호출하면 완벽함
-}
     private void OnParry(InputAction.CallbackContext context)
     {
         if (currentState == PlayerState.Locomotion && _isGrounded)
@@ -613,7 +644,7 @@ public class PlayerController : MonoBehaviour
         
         if (parrySound != null)
             {
-                SoundManager.Instance.PlaySFX(parrySound, transform.position);
+                SoundManager.Instance.PlayPlayerSFX(parrySound, 2.0f);
             }  
         // 일정 시간 뒤에 기회 박탈
         CancelInvoke(nameof(ResetCounterWindow));
@@ -682,6 +713,12 @@ public class PlayerController : MonoBehaviour
                 {
                     // 결제 성공 -> 다음 공격 진행
                     _comboStep++;
+                    if (myWeapon != null)
+                    {
+                        myWeapon.damageMultiplier = GetCurrentComboMultiplier();
+                        // 디버그용: 배율 확인
+                        // Debug.Log($"콤보 {_comboStep + 1}타! 데미지 배율: {myWeapon.damageMultiplier}x");
+                    }
                     _comboInputReceived = false;
 
                     animator.SetInteger(AnimID_ComboStep, _comboStep);

@@ -16,7 +16,10 @@ MonoBehaviour:
   description: 
   damage: 10
   attackRange: 1.5
+  comboMultipliers:
+  - 1
   swingSound: {fileID: 0}
   hitSound: {fileID: 0}
+  criticalHitSound: {fileID: 0}
   hitVFX: {fileID: 0}
   cameraShake: 0.1

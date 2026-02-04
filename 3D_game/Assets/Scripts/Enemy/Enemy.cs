@@ -347,9 +347,20 @@ public class Enemy : MonoBehaviour
             }
         }
 
-        Vector3 rootMotionVelocity = _animator.deltaPosition / Time.deltaTime;
-        if (_isJumpBoosting) rootMotionVelocity *= jumpBoostMultiplier;
-        _agent.velocity = rootMotionVelocity;
+        // Vector3 rootMotionVelocity = _animator.deltaPosition / Time.deltaTime;
+        // if (_isJumpBoosting) rootMotionVelocity *= jumpBoostMultiplier;
+
+        if (Time.deltaTime > 0.001f) // 0.001f보다 클 때만 (즉, 멈춰있지 않을 때만)
+        {
+            Vector3 rootMotionVelocity = _animator.deltaPosition / Time.deltaTime;
+            if (_isJumpBoosting) rootMotionVelocity *= jumpBoostMultiplier;
+            _agent.velocity = rootMotionVelocity;
+        }
+        else
+        {
+            // 시간이 멈췄으면(Hit Stop), 몬스터도 멈춰야 함!
+            _agent.velocity = Vector3.zero;
+        }
     }
     // Sound Helper
     // 1. 평소 울음소리 (Idle Growl) 처리
