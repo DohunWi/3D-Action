@@ -11,6 +11,7 @@ public class WeaponData : ScriptableObject
 
     [Header("Stats")]
     public float damage = 10f;
+    public float poiseDamage = 10f;
     public float attackRange = 1.5f;
 
     [Header("Combo Settings")]

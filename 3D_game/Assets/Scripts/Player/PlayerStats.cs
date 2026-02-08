@@ -35,7 +35,7 @@ public class PlayerStats : CharacterStats
         OnManaChanged?.Invoke(currentMana, maxMana);
         OnStaminaChanged?.Invoke(currentStamina, maxStamina);
     }
-    private void Update()
+    public override void Update()
     {
         // 스태미나 자동 회복 로직
         // "마지막 사용 후 딜레이(2초)가 지났고" AND "스태미나가 꽉 차지 않았다면" -> 회복
@@ -95,7 +95,7 @@ public class PlayerStats : CharacterStats
     {
         return currentStamina >= amount;
     }    
-    public override void TakeDamage(float damage, Transform attacker = null)
+    public override void TakeDamage(float damage, float poiseDamage = 10f, Transform attacker = null)
     {
         // 1. 무적 판정 로직 추가
         if (playerController != null && playerController.currentState == PlayerState.Roll)
@@ -133,7 +133,7 @@ public class PlayerStats : CharacterStats
         }
 
         // 3. 무적이 아니면 부모의 원래 기능(체력 깎기) 실행
-        base.TakeDamage(damage, attacker);
+        base.TakeDamage(damage, 50.0f, attacker);
     }
     // 디버그용: 패링 각도를 눈으로 확인
     private void OnDrawGizmosSelected()

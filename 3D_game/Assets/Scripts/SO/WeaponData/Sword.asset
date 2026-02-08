@@ -15,6 +15,7 @@ MonoBehaviour:
   weaponName: Sword
   description: Iron
   damage: 10
+  poiseDamage: 20
   attackRange: 1.5
   comboMultipliers:
   - 1

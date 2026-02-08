@@ -14,18 +14,39 @@ public class CharacterStats : MonoBehaviour, IDamageable
     public AudioClip hitVoice;   // 맞았을 때 낼 소리 
     public AudioClip deathVoice; // 죽었을 때 낼 소리 
 
+    [Header("Poise (Super Armor)")]
+    public float maxPoise = 50f;
+    public float poiseRecoveryTime = 3.0f;
+    public float poiseRecoveryRate = 10f; // 초당 회복량
+    private float _currentPoise;
+    private float _lastDamageTime;
+
     // 다른 스크립트들에게 방송하는 이벤트
     public event Action OnDeath; 
     public event Action OnTakeDamage;    
     public event Action<float, float> OnHealthChanged;
+    public event Action OnPoiseBroken;
     public virtual void Start()
     {
         currentHealth = maxHealth;
+        _currentPoise = maxPoise;
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
-
-    public virtual void TakeDamage(float damage, Transform attacker = null)
+    public virtual void Update()
     {
+        // 강인도 자동 회복 로직 (여기서 통합 관리)
+        if (Time.time > _lastDamageTime + poiseRecoveryTime)
+        {
+            if (_currentPoise < maxPoise)
+            {
+                _currentPoise += poiseRecoveryRate * Time.deltaTime;
+                // (선택) UI 갱신이 필요하다면 이벤트 추가 가능
+            }
+        }
+    }
+    public virtual void TakeDamage(float damage, float poiseDamage = 10f, Transform attacker = null)
+    {
+        // 1. 데미지 처리
         if (currentHealth <= 0) return; // 이미 죽었으면 무시
 
         currentHealth -= damage;
@@ -35,14 +56,28 @@ public class CharacterStats : MonoBehaviour, IDamageable
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnTakeDamage?.Invoke(); // 맞았다고 알림 (나중에 피 튀기는 효과 등에 사용)
 
-        // ====================================================
-        // 피격 사운드 재생
-        // ====================================================
-        if (hitVoice != null)
+        // 2. 강인도 처리 
+        _lastDamageTime = Time.time;
+        _currentPoise -= poiseDamage;
+
+        if (_currentPoise <= 0)
         {
-            // Pitch를 살짝 랜덤하게 주면 훨씬 자연스러움
-            SoundManager.Instance.PlaySFX(hitVoice, transform.position, UnityEngine.Random.Range(0.9f, 1.1f)); 
+            // 강인도 파괴! -> Enemy에게 "너 기절해!" 라고 알림
+            _currentPoise = maxPoise; // 초기화
+            OnPoiseBroken?.Invoke(); 
+            // 피격 사운드 재생  
+            if (hitVoice != null)
+            {
+                // Pitch를 살짝 랜덤하게 주면 훨씬 자연스러움
+                SoundManager.Instance.PlaySFX(hitVoice, transform.position, UnityEngine.Random.Range(0.9f, 1.1f)); 
+            }
         }
+        else
+        {
+            // 강인도 버팀 -> Enemy에게 "너 맞긴 했는데 참아!" 라고 알림
+            OnTakeDamage?.Invoke();
+        }
+        // ====================================================
 
         // ★ 데미지 팝업 생성
         if (damagePopupPrefab != null)

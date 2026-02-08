@@ -276,13 +276,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4968694849207814359}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0.045794692, y: -0.0083773, z: -0.17975526, w: 0.9826092}
+  m_LocalPosition: {x: -0.09956303, y: 0.027177814, z: 0.010989465}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 877431493095276954}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 4.99, y: -1.894, z: -20.816}
 --- !u!65 &5320178832149701992
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -302,8 +302,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.5004485, y: 0.8739944, z: 0.31707674}
-  m_Center: {x: 0.068472184, y: 0.24359736, z: -0.0016347951}
+  m_Size: {x: 0.5004485, y: 1.0320592, z: 0.31707674}
+  m_Center: {x: 0.06847126, y: 0.32263026, z: -0.0016345256}
 --- !u!54 &6270294460631428062
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -435,18 +435,22 @@ MonoBehaviour:
   chaseGiveUpRange: 20
   patrolRadius: 10
   patrolWaitTime: 2
-  audioSource: {fileID: 0}
-  idleSound: {fileID: 8300000, guid: cb7aa954dd20a467eb610c20a7f2c284, type: 3}
-  minIdleTime: 5
-  maxIdleTime: 10
-  attackRange: 2
-  jumpAttackRange: 3.5
+  attackRange: 2.5
   attackCooldown: 3
-  jumpBoostMultiplier: 3
+  jumpAttackReach: 5
+  useFireBreath: 0
+  fireBreathCooldown: 10
+  downDuration: 3
+  jumpAirTime: 0.6
+  maxJumpDistance: 10
   attackRotateDuration: 0.3
   leftWeapon: {fileID: 5345441187063431416}
   rightWeapon: {fileID: 6518581301007587224}
   jumpAtaackWave: {fileID: 8359401033448649858}
+  audioSource: {fileID: 0}
+  idleSound: {fileID: 8300000, guid: cb7aa954dd20a467eb610c20a7f2c284, type: 3}
+  minIdleTime: 5
+  maxIdleTime: 10
 --- !u!195 &3000899070877089288
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -485,6 +489,9 @@ MonoBehaviour:
   damagePopupPrefab: {fileID: 8890854200973032033, guid: 908d26bba5a4543499056936a46cda3b, type: 3}
   hitVoice: {fileID: 8300000, guid: 3d63bca70bca64a26833259de5dc5a0c, type: 3}
   deathVoice: {fileID: 8300000, guid: e06874a239e8e4576ae1f3daa1f152df, type: 3}
+  maxPoise: 50
+  poiseRecoveryTime: 3
+  poiseRecoveryRate: 10
 --- !u!95 &4661863084572555302
 Animator:
   serializedVersion: 7
@@ -774,8 +781,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.4454971, y: 0.75295883, z: 0.4195788}
-  m_Center: {x: -0.01012047, y: 0.105344474, z: -0.108922355}
+  m_Size: {x: 0.4454971, y: 0.79371077, z: 0.4195788}
+  m_Center: {x: -0.010120459, y: 0.12572049, z: -0.10892234}
 --- !u!54 &4108360329139251292
 Rigidbody:
   m_ObjectHideFlags: 0

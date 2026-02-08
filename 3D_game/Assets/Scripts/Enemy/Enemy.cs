@@ -35,12 +35,13 @@ public class Enemy : MonoBehaviour
     [Header("Combat Settings")]
     public float attackRange = 2.5f; // 1타 사거리에 맞춰 살짝 늘림
     public float attackCooldown = 2.0f;
+    public float jumpAttackReach = 5.0f;
     private float _lastAttackTime;
     private Transform _target;
 
     [Header("Combo Attack")]
-    // 공격 순서: 1(왼손) -> 0(오른손) -> 2(점프)
-    private int[] _comboSequence = { 3, 4, 0, 1, 2 }; 
+    // 공격 순서: 2(점프)
+    private int[] _comboSequence = { 3, 4, 2, 0, 1 }; 
     private int _currentComboStep = 0;
     private bool _isComboActive = false;
     private float _stopRotationTime;
@@ -50,21 +51,17 @@ public class Enemy : MonoBehaviour
     public float fireBreathCooldown = 10.0f;
     private float _lastFireBreathTime;
 
-    [Header("Poise (Super Armor)")]
-    public float maxPoise = 50f;      // 최대 강인도 (높을수록 잘 안 넘어짐)
-    public float poiseRecoveryTime = 5.0f; // 비전투 시 회복 시작 시간
-    private float _currentPoise;
-    private float _lastDamageTime;
-
     [Header("Down State")]
     public float downDuration = 2.0f; // 누워있는 시간
     private static readonly int AnimID_Down = Animator.StringToHash("doDown"); // 다운 애니메이션
     private static readonly int AnimID_GetUp = Animator.StringToHash("doGetUp"); // 일어나는 애니메이션 (없으면 생략 가능)
     private Coroutine _downCoroutine;
 
-    [Header("Jump Attack Boost")]
-    public float jumpBoostMultiplier = 2.0f;
-    private bool _isJumpBoosting = false;
+    [Header("Jump Attack Settings")]
+    public float jumpAirTime = 0.8f; // 점프가 시작되고 착지할 때까지 걸리는 시간 (애니메이션에 맞춰 조절)
+    public float maxJumpDistance = 10.0f; // 너무 멀면 이상하게 날아가니까 제한
+    private Vector3 _calculatedJumpVelocity; // 계산된 점프 속도
+    private bool _isHomingJumpActive = false; // 호밍 점프 중인지 OnAttackEnd여부
 
     [Header("Rotation Settings")]
     [Range(0f, 1f)] public float attackRotateDuration = 0.5f; // 공격 중 회전 가능 시간
@@ -102,7 +99,6 @@ public class Enemy : MonoBehaviour
         if (player != null) _target = player.transform;
 
         _startPosition = transform.position;
-        _currentPoise = maxPoise; // 강인도 초기화
         _lastAttackTime = -attackCooldown;
 
         ChangeState(EnemyState.Patrol);
@@ -115,7 +111,8 @@ public class Enemy : MonoBehaviour
     {
         if (_stats != null)
         {
-            _stats.OnTakeDamage += OnTakeDamage; // 여기서 연결됨
+            _stats.OnPoiseBroken += HandlePoiseBroken; // 강인도 깨짐 -> 경직
+            _stats.OnTakeDamage += HandleSuperArmorHit; // 그냥 피격 -> 빨간맛 연출
             _stats.OnDeath += OnDie;
         }
     }
@@ -124,7 +121,8 @@ public class Enemy : MonoBehaviour
     {
         if (_stats != null)
         {
-            _stats.OnTakeDamage -= OnTakeDamage;
+            _stats.OnPoiseBroken -= HandlePoiseBroken;
+            _stats.OnTakeDamage -= HandleSuperArmorHit;
             _stats.OnDeath -= OnDie;
         }
     }
@@ -132,15 +130,6 @@ public class Enemy : MonoBehaviour
     private void Update()
     {
         if (currentState == EnemyState.Die) return;
-        
-        // 강인도 자동 회복 (맞지 않고 일정 시간 지나면)
-        if (Time.time > _lastDamageTime + poiseRecoveryTime)
-        {
-            if (currentState != EnemyState.Hit && currentState != EnemyState.Die && currentState != EnemyState.Parried)
-            {
-                _currentPoise = Mathf.MoveTowards(_currentPoise, maxPoise, Time.deltaTime * 10f);
-            }
-        }
 
         if (_target == null) return;
 
@@ -183,7 +172,6 @@ public class Enemy : MonoBehaviour
             case EnemyState.Attack:
                 _agent.isStopped = false; 
                 DisableAllWeapons();
-                _isJumpBoosting = false;
                 
                 // 공격 상태를 벗어나는데(피격 등) 다음이 Attack이 아니면 콤보 끊기
                 if (newState != EnemyState.Attack)
@@ -239,8 +227,6 @@ public class Enemy : MonoBehaviour
                 _agent.isStopped = true;        // 이동 정지
                 _agent.velocity = Vector3.zero;
                 _animator.SetTrigger(AnimID_Down); // 넘어지는 애니메이션 재생
-                // 강인도 초기화 (일어날 때 다시 쌩쌩하게)
-                _currentPoise = maxPoise;
                 
                 DisableAllWeapons(); // 공격 판정 끄기
                 
@@ -407,33 +393,45 @@ public class Enemy : MonoBehaviour
     {
         if (_isComboActive)
         {
-            // 거리 체크 로직
-            float dist = Vector3.Distance(transform.position, _target.position);
-            // "공격 사거리 + 약간의 여유(1.0m)"보다 멀어졌다면?
-            if (dist > attackRange + 1.0f)
+            // 다음 단계가 있는지 확인
+            int nextStep = _currentComboStep + 1;
+            if (nextStep < _comboSequence.Length)
             {
-                // 콤보 중단
-                EndCombo(); 
-                return;
-            }
+                float dist = Vector3.Distance(transform.position, _target.position);
+                
+                // 기본 허용 거리 (평타는 짧게)
+                float checkRange = attackRange + 1.0f; 
 
-            _currentComboStep++; // 다음 단계로
+                // ★ [핵심] 다음 공격이 '점프 공격(2)'이라면? 허용 거리를 대폭 늘림!
+                // (이전에 작성한 _comboSequence = { 3, 4, 2, 0, 1 } 기준, 2번이 점프)
+                if (_comboSequence[nextStep] == 2) 
+                {
+                    checkRange = jumpAttackReach; // 예: 6.0m
+                }
+                else if(_comboSequence[nextStep] == 0)
+                {
+                    checkRange = attackRange - 1.0f;
+                }
 
-            // 콤보가 남았으면 계속 공격
-            if (_currentComboStep < _comboSequence.Length)
-            {
-                // (선택) 플레이어가 너무 멀어졌으면 콤보 중단? -> 일단 소울류처럼 헛치더라도 끝까지 하게 둠
-                ProcessComboStep();
+                // 거리가 허용 범위를 벗어났으면 콤보 중단
+                if (dist > checkRange)
+                {
+                    EndCombo(); 
+                    return;
+                }
+
+                _currentComboStep++; // 다음 단계 진행
+                ProcessComboStep();  // 공격 실행
             }
             else
             {
-                EndCombo();
+                EndCombo(); // 콤보 끝
             }
         }
         else
         {
             // 단발성 공격이나 다른 상황이었다면 복귀
-            ChangeState(EnemyState.Chase);
+            if (currentState != EnemyState.Down) ChangeState(EnemyState.Chase);
         }
     }
 
@@ -452,40 +450,25 @@ public class Enemy : MonoBehaviour
         ChangeState(EnemyState.Die);
     }
 
-    // --- Damage & Poise System (슈퍼아머) ---
-    public void OnTakeDamage()
+    // --- 이벤트 핸들러 ---
+
+    // 1. 강인도가 깨졌을 때 (Stat에서 호출해줌)
+    private void HandlePoiseBroken()
     {
-        if (currentState == EnemyState.Die) return;
+        if (currentState == EnemyState.Die || currentState == EnemyState.Down) return;
 
-        if (currentState == EnemyState.Down) 
-        {
-            // 데미지는 들어가지만 상태 변경은 안 함
-            // (연출을 위해 몸이 움찔거리는 정도는 괜찮음)
-            return; 
-        }
-        // 1. 피격 시간 기록
-        _lastDamageTime = Time.time;
-
-        // 2. 강인도 감소 (기본 10 감소로 가정)
-        _currentPoise -= 20f; 
-
-        // 3. 강인도 체크
-        if (_currentPoise <= 0)
-        {
-            // 강인도 파괴! -> 경직 발생
-            _currentPoise = maxPoise; // 초기화
-            ChangeState(EnemyState.Hit);
-            // Debug.Log("강인도 파괴! 경직!");
-        }
-        else
-        {
-            // 슈퍼아머 발동! (상태 안 바꿈 = 공격 안 끊김)
-            // 대신 시각적 피드백 제공 (빨간색 깜빡임)
-            StartCoroutine(FlashRed());
-            // Debug.Log($"슈퍼아머! 남은 강인도: {_currentPoise}");
-        }
+        // 고민할 것 없이 바로 경직 상태로!
+        ChangeState(EnemyState.Hit);
     }
 
+    // 2. 강인도로 버텼을 때 (Stat에서 호출해줌)
+    private void HandleSuperArmorHit()
+    {
+        if (currentState == EnemyState.Die || currentState == EnemyState.Down) return;
+
+        // 상태 변경 없이 연출만 재생
+        StartCoroutine(FlashRed());
+    }
     private IEnumerator FlashRed()
     {
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
@@ -493,7 +476,7 @@ public class Enemy : MonoBehaviour
         yield return new WaitForSeconds(0.1f);
         foreach (var r in renderers) r.material.color = Color.white;
     }
-
+    // ----------------------------------
     public void GetParried()
     {
         if (currentState == EnemyState.Die) return;
@@ -580,13 +563,17 @@ public class Enemy : MonoBehaviour
         {
             if (Time.deltaTime > 0.001f)
             {
-                Vector3 rootMotionVelocity = _animator.deltaPosition / Time.deltaTime;
-                if (_isJumpBoosting) rootMotionVelocity *= jumpBoostMultiplier;
-                _agent.velocity = rootMotionVelocity;
-            }
-            else
-            {
-                _agent.velocity = Vector3.zero; // 시간 정지 시 멈춤
+                // ★ 호밍 점프 중이면 계산된 속도로 날아감!
+                if (_isHomingJumpActive)
+                {
+                    _agent.velocity = _calculatedJumpVelocity;
+                }
+                else
+                {
+                    // 일반 공격은 루트 모션 사용
+                    Vector3 rootMotionVelocity = _animator.deltaPosition / Time.deltaTime;
+                    _agent.velocity = rootMotionVelocity;
+                }
             }
         }
     }
@@ -607,10 +594,46 @@ public class Enemy : MonoBehaviour
             }
         }
     }
+    // ★ 애니메이션 이벤트: 발이 땅에서 떨어질 때 호출
+    public void CalculateJumpVector()
+    {
+        if (_target == null) return;
 
-    // --- Animation Events (무기 콜라이더) ---
-    public void StartJumpBoost() => _isJumpBoosting = true;
-    public void EndJumpBoost() => _isJumpBoosting = false;
+        // 1. 목표 지점 계산 (플레이어 위치)
+        Vector3 targetPos = _target.position;
+        Vector3 startPos = transform.position;
+
+        // 2. 거리 계산
+        Vector3 direction = targetPos - startPos;
+        direction.y = 0; // 높이는 무시 (수평 이동만 계산)
+        
+        float distance = direction.magnitude;
+
+        // 3. 거리 제한 (너무 멀면 최대치까지만)
+        if (distance > maxJumpDistance)
+        {
+            distance = maxJumpDistance;
+        }
+
+        // 4. 속도 = 거리 / 시간
+        // (점프 체공 시간 동안 저 거리만큼 가려면 얼마나 빨라야 하는가?)
+        float requiredSpeed = distance / jumpAirTime;
+
+        // 5. 최종 속도 벡터 저장
+        _calculatedJumpVelocity = direction.normalized * requiredSpeed;
+
+        // 6. 호밍 활성화 + 회전도 타겟 보게 맞춤
+        _isHomingJumpActive = true;
+        InstantFaceTarget(); 
+    }
+
+    // 애니메이션 이벤트: 착지했을 때 호출 (호밍 끄기)
+    public void EndHomingJump()
+    {
+        _isHomingJumpActive = false;
+        _agent.velocity = Vector3.zero; // 착지하면 미끄러짐 방지
+    }
+    // --- Animation Events ---
     public void EnableRightWeapon() => rightWeapon?.EnableHitbox();
     public void DisableRightWeapon() => rightWeapon?.DisableHitbox();
     public void EnableLeftWeapon() => leftWeapon?.EnableHitbox();
