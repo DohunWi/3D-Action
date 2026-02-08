@@ -14814,7 +14814,7 @@ PrefabInstance:
       objectReference: {fileID: 8300000, guid: 697ec1dab75d546848853c1e26c4fd73, type: 3}
     - target: {fileID: 4665569201345344837, guid: 4b2842af050d94ce0a6856ced5b70dc5, type: 3}
       propertyPath: maxHealth
-      value: 100
+      value: 500
       objectReference: {fileID: 0}
     - target: {fileID: 4665569201345344837, guid: 4b2842af050d94ce0a6856ced5b70dc5, type: 3}
       propertyPath: deathVoice
