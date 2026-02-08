@@ -28,6 +28,7 @@ public class PlayerWeapon : Weapon
             AudioClip clip = weaponData.criticalHitSound != null ? weaponData.criticalHitSound : weaponData.hitSound;
             SoundManager.Instance.PlaySFX(clip, transform.position, 1.0f); 
 
+            victim.GetComponent<Enemy>().KnockDown();
             // B. VFX 재생 (부모 코드를 안 부르니 여기서 직접 해줘야 함)
             if (weaponData.hitVFX != null)
             {

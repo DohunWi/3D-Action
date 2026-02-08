@@ -754,6 +754,8 @@ public class PlayerController : MonoBehaviour
     {
         animator.SetBool(AnimID_IsCountering, false);
         animator.ResetTrigger(AnimID_DoAttack);
+        _comboInputReceived = false; // 예약된 콤보 삭제 (이게 범인!)
+        _comboStep = 0;  // 콤보 순서 초기화
         ChangeState(PlayerState.Locomotion);
     }
     

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: fead547d3fe2548a9af1e9d635341dfb
+guid: 12a839bbdef6c4ed396f4131b6e8c30e
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Mutant_hit
+      name: Mutant_getup
       takeName: mixamo.com
       internalID: -203655887218126122
       firstFrame: 0
-      lastFrame: 53
+      lastFrame: 250
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
