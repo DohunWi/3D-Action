@@ -26,6 +26,7 @@ public class WeaponData : ScriptableObject
     
     [Header("VFX")]
     public GameObject hitVFX;    // 피 튀기는 이펙트
+    public GameObject impactVFX;
 
     [Header("Player Only")]
     public float cameraShake = 0.1f; // 플레이어 무기일 때만 쓸 값

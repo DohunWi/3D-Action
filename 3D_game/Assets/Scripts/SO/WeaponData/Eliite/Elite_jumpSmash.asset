@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c0b1ebfcf27442e09a77d90212f2b23, type: 3}
+  m_Name: Elite_jumpSmash
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  weaponName: JumpSmash
+  description: 
+  damage: 50
+  poiseDamage: 10
+  attackRange: 3
+  comboMultipliers:
+  - 1
+  swingSound: {fileID: 0}
+  hitSound: {fileID: 0}
+  criticalHitSound: {fileID: 0}
+  hitVFX: {fileID: 0}
+  impactVFX: {fileID: 8146987053742422542, guid: 356c2d8efa84947a8b5a749973591cab, type: 3}
+  cameraShake: 0.1

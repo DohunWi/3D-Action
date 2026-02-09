@@ -74,7 +74,10 @@ public class Weapon : MonoBehaviour
             if (weaponData.swingSound != null)
             {
                 SoundManager.Instance.PlaySFX(weaponData.swingSound, transform.position);
-            }  
+            }
+            if (weaponData.impactVFX != null)
+                Instantiate(weaponData.impactVFX, transform.position + transform.forward, Quaternion.identity);
+  
             // 
             // Debug.Log($"[Weapon] 히트박스 켜짐! (GameObj: {gameObject.name})"); 
         }

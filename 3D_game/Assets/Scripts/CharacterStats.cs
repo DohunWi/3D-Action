@@ -5,7 +5,7 @@ public class CharacterStats : MonoBehaviour, IDamageable
 {
     [Header("Stats")]
     public float maxHealth = 100f;
-    public float currentHealth { get; protected set; } // 자식도 수정 가능하게 protected로 변경
+    public float currentHealth { get; set; } 
 
     [Header("VFX")]
     public GameObject damagePopupPrefab; 

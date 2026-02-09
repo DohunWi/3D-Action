@@ -20,9 +20,9 @@ public class Enemy : MonoBehaviour
     public EnemyState currentState = EnemyState.Patrol; 
 
     [Header("Components")]
-    private NavMeshAgent _agent;
-    private Animator _animator;
-    private CharacterStats _stats;
+    protected NavMeshAgent _agent;
+    protected Animator _animator;
+    protected CharacterStats _stats;
 
     [Header("Sensors (Patrol & Chase)")]
     public float detectionRange = 8.0f;     
@@ -37,19 +37,14 @@ public class Enemy : MonoBehaviour
     public float attackCooldown = 2.0f;
     public float jumpAttackReach = 5.0f;
     private float _lastAttackTime;
-    private Transform _target;
+    protected Transform _target;
 
     [Header("Combo Attack")]
     // 공격 순서: 2(점프)
-    private int[] _comboSequence = { 3, 4, 2, 0, 1 }; 
+    protected int[] _comboSequence = { 3, 4, 2, 0, 1 }; 
     private int _currentComboStep = 0;
     private bool _isComboActive = false;
     private float _stopRotationTime;
-
-    [Header("Special Pattern (Fire Breath)")]
-    public bool useFireBreath = false; 
-    public float fireBreathCooldown = 10.0f;
-    private float _lastFireBreathTime;
 
     [Header("Down State")]
     public float downDuration = 2.0f; // 누워있는 시간
@@ -86,14 +81,14 @@ public class Enemy : MonoBehaviour
     private static readonly int AnimID_AttackIndex = Animator.StringToHash("attackIndex");
     private static readonly int AnimID_Parried = Animator.StringToHash("doParried");
 
-    private void Awake()
+    protected virtual void  Awake()
     {
         _agent = GetComponent<NavMeshAgent>();
         _animator = GetComponent<Animator>();
         _stats = GetComponent<CharacterStats>();
     }
 
-    private void Start()
+    protected virtual void Start()
     {
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null) _target = player.transform;
@@ -294,9 +289,18 @@ public class Enemy : MonoBehaviour
     }
 
     // --- AI Logic (Chase & Combo Attack) ---
+    // // [수정] 자식이 오버라이드할 수 있게 가상 함수로 추가
+    protected virtual bool TrySpecialAttack() 
+    { 
+        // 기본 Enemy는 특수 공격이 없으므로 false 반환
+        return false; 
+    }
     private void UpdateChase()
     {
         if (_isComboActive) return;
+        // 자식에서 추가할 공격
+        if (TrySpecialAttack()) return;
+
         float distance = Vector3.Distance(transform.position, _target.position);
         
         if (distance > chaseGiveUpRange)
@@ -308,18 +312,7 @@ public class Enemy : MonoBehaviour
         // 공격 쿨타임 체크 (콤보 종료 후 대기 시간)
         if (Time.time >= _lastAttackTime + attackCooldown)
         {
-            // 1. 불 뿜기 (나중에 구현할 특수 패턴)
-            if (useFireBreath && Time.time >= _lastFireBreathTime + fireBreathCooldown)
-            {
-                if (distance <= 5.0f) 
-                {
-                    // StartFireBreath(); // TODO: 구현 필요
-                    // _lastFireBreathTime = Time.time;
-                    // return;
-                }
-            }
-
-            // 2. 콤보 공격 시작 (사거리 내 진입)
+            // 1. 콤보 공격 시작 (사거리 내 진입)
             if (distance <= attackRange)
             {
                 StartComboAttack();
@@ -445,7 +438,7 @@ public class Enemy : MonoBehaviour
         if (currentState == EnemyState.Down) return; // 누워있으면 무시!
         ChangeState(EnemyState.Chase);
     }    
-    private void OnDie()
+    protected virtual void OnDie()
     {
         ChangeState(EnemyState.Die);
     }

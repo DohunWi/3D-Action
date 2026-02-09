@@ -16,13 +16,14 @@ MonoBehaviour:
   description: Jump and Smash
   animTriggerName: doSmash
   damage: 15
+  poiseDamage: 100
   manaCost: 50
   cooldown: 5
   impactRadius: 3
   castSound: {fileID: 8300000, guid: 509ff7d76acab4b64924a32b04e61778, type: 3}
   impactSound: {fileID: 8300000, guid: f5833dac77207483d83e7da73b5a12e4, type: 3}
   castVFX: {fileID: 0}
-  impactVFX: {fileID: 0}
+  impactVFX: {fileID: 356108203805753419, guid: c435db333cd424aa69d796074773a1c5, type: 3}
   impulseDefinition:
     ImpulseChannel: 1
     ImpulseShape: 0

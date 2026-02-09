@@ -622,7 +622,7 @@ public class PlayerController : MonoBehaviour
                 var enemyStats = hit.GetComponent<CharacterStats>();
                 if (enemyStats != null)
                 {
-                    enemyStats.TakeDamage(finalDamage, 50.0f, transform);
+                    enemyStats.TakeDamage(finalDamage, activeSkill.poiseDamage, transform);
                 }
             }
         }
