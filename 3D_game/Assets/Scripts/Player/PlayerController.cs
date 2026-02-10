@@ -54,7 +54,6 @@ public class PlayerController : MonoBehaviour
     public float counterWindowDuration = 1.5f; // 패링 후 반격 가능한 시간
     private bool _canCounterAttack = false;    // 현재 반격이 가능한가?
     public float counterDamageMultiplier = 3.0f; // 반격 데미지 배율
-    public AudioClip parrySound; // 휘두르는 소리
 
     // 외부에서 락온 상태인지 물어볼 때 토스해줌
     [Header("Lock On Settings")]
@@ -62,6 +61,11 @@ public class PlayerController : MonoBehaviour
     public bool IsLockOn => _lockOnSystem != null && _lockOnSystem.isLockOn; 
     public Transform LockOnTarget => _lockOnSystem != null ? _lockOnSystem.currentTarget : null;
     public Transform cameraRoot; 
+
+    [Header("Audio Clip")]
+    public AudioClip parrySound; // 휘두르는 소리
+    public AudioClip[] footsteps;
+    public AudioClip jumpSound;
 
     
     // 내부 변수
@@ -749,6 +753,11 @@ public class PlayerController : MonoBehaviour
             if(currentState == PlayerState.CounterAttack) return;
             ChangeState(PlayerState.Locomotion);
         }
+    }
+    public void OnFootstep()
+    {
+        // 애니메이션 이벤트로 호출하는 함수
+        SoundManager.Instance.PlayRandomSFX(footsteps, 0.3f);
     }
     public void OnCounterEnd()
     {

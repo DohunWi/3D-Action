@@ -51,4 +51,19 @@ public class SoundManager : MonoBehaviour
         _oneShotSource.pitch = 1.0f + Random.Range(-0.05f, 0.05f); 
         _oneShotSource.PlayOneShot(clip, volume);
     }
+
+    public void PlayRandomSFX(AudioClip[] clips, float volume = 1.0f)
+    {
+        // 배열이 비어있거나 오디오 소스가 없으면 패스
+        if (clips == null || clips.Length == 0 || _oneShotSource == null) return;
+
+        // 랜덤하게 하나 뽑기
+        int index = Random.Range(0, clips.Length);
+        
+        if (clips[index] != null)
+        {
+            _oneShotSource.pitch = Random.Range(0.9f, 1.1f);
+            _oneShotSource.PlayOneShot(clips[index], volume);
+        }
+    }
 }

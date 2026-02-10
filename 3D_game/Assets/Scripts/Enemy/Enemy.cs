@@ -145,6 +145,23 @@ public class Enemy : MonoBehaviour
     // --- FSM 상태 변경 ---
     public void ChangeState(EnemyState newState)
     {
+        void CleanUpFlag() // 상태 변경시 초기화 할 것들
+        {
+            // navMesh 초기화
+            _agent.isStopped = true;
+            _agent.velocity = Vector3.zero;
+
+            // 점프 초기화
+            _isHomingJumpActive = false; 
+            _calculatedJumpVelocity = Vector3.zero;
+
+            // 콤보 초기화
+            _isComboActive = false;
+            _currentComboStep = 0;
+
+            //무기 콜라이더 끄기
+            DisableAllWeapons();
+        }
         if (currentState == EnemyState.Die) return;
         
         // 같은 상태 반복 진입 방지 (단, Attack->Attack 콤보 연계는 예외적으로 허용하거나 아래 로직에서 처리)
@@ -210,37 +227,25 @@ public class Enemy : MonoBehaviour
                 break;
 
             case EnemyState.Hit:
-                _agent.isStopped = true;
-                _agent.velocity = Vector3.zero;
+                CleanUpFlag();
                 _animator.SetTrigger(AnimID_Hit);
                 // 강인도 파괴되어 경직됐으므로 콤보 초기화
-                _isComboActive = false;
-                _currentComboStep = 0;
                 break;
             
             case EnemyState.Down:
-                _agent.isStopped = true;        // 이동 정지
-                _agent.velocity = Vector3.zero;
-                _animator.SetTrigger(AnimID_Down); // 넘어지는 애니메이션 재생
-                
-                DisableAllWeapons(); // 공격 판정 끄기
-                
+                CleanUpFlag();
+                _animator.SetTrigger(AnimID_Down); // 넘어지는 애니메이션 재생      
                 // 일정 시간 뒤에 일어나는 코루틴 시작
                 _downCoroutine = StartCoroutine(RecoverFromDown());
                 break;
 
             case EnemyState.Parried:
-                _agent.isStopped = true;        
-                _agent.velocity = Vector3.zero; 
+                CleanUpFlag();
                 _animator.SetTrigger(AnimID_Parried); 
-                DisableAllWeapons();
-                // 패링당하면 당연히 콤보 끊김
-                _isComboActive = false;
-                _currentComboStep = 0;
                 break;
 
             case EnemyState.Die:
-                _agent.isStopped = true;
+                CleanUpFlag();
                 _agent.enabled = false;
                 GetComponent<Collider>().enabled = false;
                 _animator.SetTrigger(AnimID_Die);

@@ -19,7 +19,7 @@ MonoBehaviour:
   attackRange: 3
   comboMultipliers:
   - 1
-  swingSound: {fileID: 0}
+  swingSound: {fileID: 8300000, guid: f5833dac77207483d83e7da73b5a12e4, type: 3}
   hitSound: {fileID: 0}
   criticalHitSound: {fileID: 0}
   hitVFX: {fileID: 0}

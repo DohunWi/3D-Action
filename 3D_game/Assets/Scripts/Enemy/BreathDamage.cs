@@ -8,6 +8,9 @@ public class BreathDamage : MonoBehaviour
     public float damageInterval = 0.5f; // 같은 놈은 0.5초에 한 번만 맞음 (연타 방지)
     public string targetTag = "Player";
 
+    [Header("Sound Clip")]
+    public AudioClip fireSound;
+
     // "누가(GameObject) 언제(Time) 맞았는지" 기록하는 장부
     private Dictionary<GameObject, float> _hitHistory = new Dictionary<GameObject, float>();
     private ParticleSystem _particleSystem;
@@ -20,6 +23,7 @@ public class BreathDamage : MonoBehaviour
     private void OnEnable()
     {
         _hitHistory.Clear(); // 켜질 때 기록 초기화
+        SoundManager.Instance.PlaySFX(fireSound, transform.position, 1.0f);
     }
 
     // ★ 핵심: 파티클이 무언가에 닿으면 유니티가 이 함수를 호출해줌

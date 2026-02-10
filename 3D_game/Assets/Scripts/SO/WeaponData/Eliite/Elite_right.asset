@@ -19,8 +19,9 @@ MonoBehaviour:
   attackRange: 1.5
   comboMultipliers:
   - 1
-  swingSound: {fileID: 0}
-  hitSound: {fileID: 0}
+  swingSound: {fileID: 8300000, guid: b0b6a090e09934520b6392d8bb87d431, type: 3}
+  hitSound: {fileID: 8300000, guid: cdf49375c2036482ea0eaf58590532ee, type: 3}
   criticalHitSound: {fileID: 0}
   hitVFX: {fileID: 0}
+  impactVFX: {fileID: 0}
   cameraShake: 0.1

@@ -22,6 +22,9 @@ public class EliteEnemy : Enemy
     public float speedBuff = 1.3f;         // 이동 속도 증가 배율
     public ParticleSystem auraParticle;    // 붉은 오라 파티클
 
+    [Header("Audio Clip")]
+    public AudioClip breathSound;
+
     // 내부 상태 변수
     private float _lastFireBreathTime; 
     private bool _isFireBreathing = false;
@@ -86,7 +89,11 @@ public class EliteEnemy : Enemy
             // audioSource.PlayOneShot(fireSound); 
         }
     }
-
+    public void OnFireBreathSFX()
+    {
+        //Sound
+        SoundManager.Instance.PlaySFX(breathSound, transform.position, 1.0f);
+    }
     // ★ 애니메이션 이벤트 or 코루틴 종료 시 호출할 함수 (불 끄기)
     public void OnFireBreathEnd()
     {
