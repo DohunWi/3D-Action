@@ -4,7 +4,7 @@ using UnityEngine.UI;
 public class EnemyHealthUI : MonoBehaviour
 {
     [Header("References")]
-    public Image healthFillImage;
+    public Slider healthBar;
     public Canvas healthCanvas; // 캔버스 자체 (죽었을 때 끄기 위해)
 
     private CharacterStats _myStats;
@@ -33,8 +33,8 @@ public class EnemyHealthUI : MonoBehaviour
             if (healthCanvas.worldCamera == null)
                 healthCanvas.worldCamera = _mainCamera;
                 
-            // ★ [핵심] 게임오브젝트를 끄지 말고, 캔버스 컴포넌트만 끕니다!
-            // 그래야 이 스크립트(Update)가 계속 돌아갑니다.
+            // ★ 게임오브젝트를 끄지 말고, 캔버스 컴포넌트만 끔
+            // 그래야 이 스크립트(Update)가 계속 돌아감.
             healthCanvas.enabled = false; 
         }
     }
@@ -85,9 +85,9 @@ public class EnemyHealthUI : MonoBehaviour
 
     private void UpdateHealthUI(float current, float max)
     {
-        if (healthFillImage != null)
+        if (healthBar != null)
         {
-            healthFillImage.fillAmount = current / max;
+            healthBar.value = current / max;
         }
     }
 

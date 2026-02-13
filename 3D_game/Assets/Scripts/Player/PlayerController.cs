@@ -11,7 +11,8 @@ public enum PlayerState
     Skill,      // 스킬
     Parry,      // 패링
     Hit,        // 피격
-    Die         // 사망
+    Die,         // 사망
+    Interact  // 상호작용
 }
 
 [RequireComponent(typeof(CharacterController))]
@@ -74,6 +75,7 @@ public class PlayerController : MonoBehaviour
     private Vector2 _inputMove;
     private Vector3 _verticalVelocity;
     private bool _isGrounded;
+    private PlayerInteraction _playerInteraction;
 
     // 애니메이션 해시
     private static readonly int AnimID_Speed = Animator.StringToHash("speed");
@@ -100,6 +102,7 @@ public class PlayerController : MonoBehaviour
         _inputActions = new PlayerControls();
         _stats = GetComponent<PlayerStats>();
         _lockOnSystem = GetComponent<PlayerLockOn>(); 
+        _playerInteraction = GetComponent<PlayerInteraction>();
 
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
@@ -117,6 +120,7 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Parry.performed += OnParry;
         _inputActions.Player.Skill.performed += OnSkill;
         _inputActions.Player.LockOn.performed += OnLockOnInput;
+        _inputActions.Player.Interact.performed += OnInteract; 
 
         if (_stats != null)
         {
@@ -134,6 +138,7 @@ public class PlayerController : MonoBehaviour
         _inputActions.Player.Parry.performed -= OnParry;
         _inputActions.Player.Skill.performed -= OnSkill;
         _inputActions.Player.LockOn.performed -= OnLockOnInput;
+        _inputActions.Player.Interact.performed -= OnInteract; 
 
         if (_stats != null)
         {
@@ -226,9 +231,17 @@ public class PlayerController : MonoBehaviour
                 _canCounterAttack = false;
                 CancelInvoke(nameof(ResetCounterWindow));
                 break;
+
             case PlayerState.Attack:
                 WeaponDisable(); // 공격 끊기면 무기 끄기
                 if (myWeapon != null) myWeapon.damageMultiplier = 1.0f;
+                break;
+
+            case PlayerState.Interact:
+                // 상호작용 끝날 때: 시간 재개, 커서 숨기기
+                Time.timeScale = 1f;
+                Cursor.visible = false;
+                Cursor.lockState = CursorLockMode.Locked;
                 break;
         }
 
@@ -314,6 +327,12 @@ public class PlayerController : MonoBehaviour
                 animator.applyRootMotion = true;
                 animator.SetBool(AnimID_IsDead, true);
                 _inputActions.Player.Disable(); // 조작 차단
+                break;
+            
+            case PlayerState.Interact:
+                Time.timeScale = 0f;
+                Cursor.visible = true;
+                Cursor.lockState = CursorLockMode.None;
                 break;
         }
     }
@@ -780,6 +799,26 @@ public class PlayerController : MonoBehaviour
         if (_lockOnSystem != null)
         {
             _lockOnSystem.ToggleLockOn();
+        }
+    }
+
+    // ----------------------------------
+    // Interact function
+    // ----------------------------------
+    public void OnInteract(InputAction.CallbackContext context)
+    {
+        if (!context.performed) return;
+
+        // 1. 상태 체크 (구르거나 공격 중엔 상호작용 불가)
+        if (currentState != PlayerState.Locomotion) return;
+
+        // 2. Interaction 스크립트에게 시도 요청
+        if (_playerInteraction != null && _playerInteraction.TryInteract())
+        {
+            // 3. 성공했다면 상태 변경 (UI 열림 등)
+            // (StatUpgradeUI 같은 애가 내부에서 ChangeState(Interaction)을 호출해줄 수도 있고,
+            //  여기서 즉시 바꿀 수도 있음. 보통은 UI가 열리면서 바꾸는 게 자연스러움)
+            Debug.Log("상호작용 성공 -> 상태 변경 로직은 UI나 대상에서 처리");
         }
     }
 }

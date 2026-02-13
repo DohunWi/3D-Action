@@ -21,13 +21,14 @@ public class Weapon : MonoBehaviour
 
         if (_collider == null)
             Debug.LogError($"[Weapon] {gameObject.name}에 콜라이더가 없습니다! 인스펙터를 확인하세요.");
+            
     }
     private void OnEnable()
     {
         // 시작할 땐 판정을 꺼둡니다.
         DisableHitbox();
     }
-    public float damage 
+    public virtual float damage 
     {
         get { return (weaponData != null ? weaponData.damage : 0f) * damageMultiplier; }
     }

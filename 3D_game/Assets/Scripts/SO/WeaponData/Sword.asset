@@ -17,6 +17,7 @@ MonoBehaviour:
   damage: 10
   poiseDamage: 20
   attackRange: 1.5
+  strengthScaling: 1
   comboMultipliers:
   - 1
   - 1.2
@@ -25,4 +26,5 @@ MonoBehaviour:
   hitSound: {fileID: 8300000, guid: 13bf4188061b747808edfb9044cb2c5c, type: 3}
   criticalHitSound: {fileID: 8300000, guid: a3961c285bdbf47929539a13b017b845, type: 3}
   hitVFX: {fileID: 0}
+  impactVFX: {fileID: 0}
   cameraShake: 0.1

@@ -24,6 +24,11 @@ public class Enemy : MonoBehaviour
     protected Animator _animator;
     protected CharacterStats _stats;
 
+    [Header("Loot (Nightmare Residue)")]
+    public GameObject memoryDropPrefab; // 기억의 파편 프리팹
+    public int minMemory = 10;
+    public int maxMemory = 20;
+
     [Header("Sensors (Patrol & Chase)")]
     public float detectionRange = 8.0f;     
     public float chaseGiveUpRange = 15.0f;  
@@ -143,7 +148,7 @@ public class Enemy : MonoBehaviour
     }
 
     // --- FSM 상태 변경 ---
-    public void ChangeState(EnemyState newState)
+    public virtual void ChangeState(EnemyState newState)
     {
         void CleanUpFlag() // 상태 변경시 초기화 할 것들
         {
@@ -250,6 +255,7 @@ public class Enemy : MonoBehaviour
                 GetComponent<Collider>().enabled = false;
                 _animator.SetTrigger(AnimID_Die);
                 Destroy(gameObject, 5f);
+                DropMemory();
                 break;
         }
     }
@@ -446,6 +452,20 @@ public class Enemy : MonoBehaviour
     protected virtual void OnDie()
     {
         ChangeState(EnemyState.Die);
+    }
+    protected void DropMemory()
+    {
+        if (memoryDropPrefab != null)
+        {
+            GameObject loot = Instantiate(memoryDropPrefab, transform.position + Vector3.up * 0.5f, Quaternion.identity);
+            
+            // 생성된 구슬에 "너는 50만큼의 기억이야"라고 주입
+            MemoryPickup pickup = loot.GetComponent<MemoryPickup>();
+            if (pickup != null)
+            {
+                pickup.memoryAmount = Random.Range(minMemory, maxMemory + 1);
+            }
+        }
     }
 
     // --- 이벤트 핸들러 ---

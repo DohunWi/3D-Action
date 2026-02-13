@@ -7,6 +7,7 @@ public class PlayerWeapon : Weapon
     public float cameraShakeAmount = 0.2f; // 카메라 흔들림 강도
 
     private PlayerController _player; // 플레이어 state 확인용
+    private PlayerStats _playerStats; // 플레이어 stat 확인용
 
     // 부모의 Awake도 실행하고 내 것도 실행
     protected override void Awake()
@@ -14,6 +15,25 @@ public class PlayerWeapon : Weapon
         base.Awake();
         ownerTag = "Player"; // 플레이어 무기라고 자동 설정
         _player = GetComponentInParent<PlayerController>();
+        _playerStats = GetComponentInParent<PlayerStats>();
+    }
+    public override float damage
+    {
+        get
+        {
+            // 1. 데이터가 없으면 0
+            if (weaponData == null) return 0f;
+
+            // 2. PlayerStats가 있다면 -> 스탯 반영 계산식 사용
+            if (_playerStats != null)
+            {
+                // (기본뎀 + 보정뎀) * 배율
+                return _playerStats.CalculateTotalDamage(weaponData) * damageMultiplier;
+            }
+
+            // 3. PlayerStats가 없다면(혹시 모를 예외) -> 그냥 기본 데미지 사용
+            return base.damage;
+        }
     }
 
     // ★ 부모가 "때렸어!" 하고 알려주면 여기서 연출 실행

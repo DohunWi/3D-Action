@@ -25,10 +25,16 @@ public class EliteEnemy : Enemy
     [Header("Audio Clip")]
     public AudioClip breathSound;
 
+    [Header("--- UI Settings ---")]
+    public string bossName = "Mutant Overlord"; // 보스 이름
+    // 씬에 있는 UI를 직접 연결하거나, 프리팹이면 Find로 찾음
+    public BossHealthBar bossHealthBar;
+
     // 내부 상태 변수
     private float _lastFireBreathTime; 
     private bool _isFireBreathing = false;
     private bool _isEnraged = false;
+    private bool _hasBossFightStarted = false;
 
     protected override void Start()
     {
@@ -58,8 +64,85 @@ public class EliteEnemy : Enemy
         {
             auraParticle.Stop();
         }
+        // ★ [추가] 보스 체력바 초기화 및 활성화
+        if (bossHealthBar == null)
+        {
+            // 만약 인스펙터 연결 안 했으면 찾아서라도 연결
+            //bossHealthBar = FindObjectOfType<BossHealthBar>();
+        }
     }
 
+    public override void ChangeState(EnemyState newState)
+    {
+        // 1. 부모의 원래 기능(애니메이션, 변수 초기화 등) 먼저 실행
+        base.ChangeState(newState);
+
+        // 2. 보스전 시작 체크
+        // 아직 전투 시작 안 함 AND (추격하거나, 공격하거나, 맞았거나)
+        // 1. 전투 시작 체크 (기존 로직)
+        if (!_hasBossFightStarted)
+        {
+            // 추격, 공격, 피격 상태가 되면 전투 시작으로 간주
+            if (newState == EnemyState.Chase || newState == EnemyState.Attack || newState == EnemyState.Hit)
+            {
+                StartBossFight();
+            }
+        }
+        // 2. ★ 전투 종료 체크 (어그로 풀림)
+        else 
+        {
+            // 이미 전투 중이었는데, '순찰(Patrol)'이나 '대기(Idle)'로 상태가 변했다면?
+            // (= 플레이어가 멀어져서 추격을 포기하고 돌아감)
+            if (newState == EnemyState.Patrol)
+            {
+                EndBossFight();
+            }
+        }
+    }
+    // 보스전 시작 함수
+    private void StartBossFight()
+    {
+        _hasBossFightStarted = true; // 이제 중복 실행 안 됨
+        Debug.Log("⚔️ BOSS FIGHT STARTED! ⚔️");
+
+        // 1. UI 켜기 (페이드 인)
+        if (bossHealthBar != null && _stats != null)
+        {
+            bossHealthBar.Initialize(_stats, bossName);
+        }
+
+        // 2. (선택) 보스전 배경음악(BGM)으로 교체
+        // SoundManager.Instance.PlayBGM(bossBattleMusic);
+
+        // 3. (선택) 포효 한번 지르기
+        if (!_isFireBreathing) // 이미 공격 중이 아니라면
+        {
+            _animator.SetTrigger("doRoar"); // 등장 포효!
+            // ChangeState(EnemyState.Attack); // 강제로 공격 상태로 전환할 수도 있음
+        }
+    }
+    private void EndBossFight()
+    {
+        _hasBossFightStarted = false; // 플래그 리셋 (다시 마주치면 UI 띄우기 위해)
+        Debug.Log("💤 BOSS FIGHT ENDED (Player ran away)");
+
+        // 1. UI 숨기기 (페이드 아웃)
+        if (bossHealthBar != null)
+        {
+            bossHealthBar.Hide(); 
+        }
+
+        // 2. (선택) 보스 체력 리셋?
+        // 다크소울처럼 도망가면 보스 체력을 다시 꽉 채우고 싶다면 주석 해제
+        if (_stats != null) 
+        {
+            _stats.currentHealth = _stats.maxHealth;
+            // UI도 다시 꽉 찬 상태로 갱신해줘야 함 (Initialize 재호출 등)
+        }
+
+        // 3. (선택) BGM 끄기 또는 원래 배경음으로 복귀
+        // SoundManager.Instance.StopBGM(); 
+    }
     // ★ 부모(Enemy)가 "특수 공격 할 거 있어?" 라고 물어볼 때 실행
     protected override bool TrySpecialAttack()
     {
