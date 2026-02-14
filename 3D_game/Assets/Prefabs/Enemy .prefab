@@ -637,16 +637,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a48a1a816bdc347b69a8514565900f7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyStats
-  maxHealth: 100
+  maxEgo: 100
   damagePopupPrefab: {fileID: 8890854200973032033, guid: 908d26bba5a4543499056936a46cda3b, type: 3}
   hitVoice: {fileID: 8300000, guid: 3d63bca70bca64a26833259de5dc5a0c, type: 3}
   deathVoice: {fileID: 8300000, guid: e06874a239e8e4576ae1f3daa1f152df, type: 3}
-  maxPoise: 50
-  poiseRecoveryTime: 3
-  poiseRecoveryRate: 10
+  maxComposure: 50
+  composureRecoveryTime: 3
+  composureRecoveryRate: 10
   expReward: 50
   memoryReward: 100
-  dropChance: 0.1
+  dropChance: 1
   dropItemPrefab: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
   animator: {fileID: 4661863084572555302}
   myCollider: {fileID: 1510553376102375883}
@@ -664,7 +664,7 @@ GameObject:
   - component: {fileID: 8419613451313281925}
   - component: {fileID: 4739855449862005177}
   m_Layer: 3
-  m_Name: Enemy Health Bar
+  m_Name: Enemy Ego Bar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -765,8 +765,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95875acf0921243c1a94855bb595ba5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyHealthUI
-  healthBar: {fileID: 8740826314623627032}
-  healthCanvas: {fileID: 7045547814827900770}
+  EgoBar: {fileID: 8740826314623627032}
+  egoCanvas: {fileID: 7045547814827900770}
 --- !u!1 &8695884813007526475
 GameObject:
   m_ObjectHideFlags: 0
@@ -778,7 +778,7 @@ GameObject:
   - component: {fileID: 6361068088760091500}
   - component: {fileID: 8740826314623627032}
   m_Layer: 3
-  m_Name: Health Bar
+  m_Name: Ego Bar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

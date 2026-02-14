@@ -15129,7 +15129,7 @@ GameObject:
   - component: {fileID: 1321493564}
   - component: {fileID: 1321493565}
   m_Layer: 5
-  m_Name: BossHealthBar panel
+  m_Name: BossEgoBar panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -24614,6 +24614,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 1776144353663422610, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
+      propertyPath: bossEgoBar
+      value: 
+      objectReference: {fileID: 1321493565}
+    - target: {fileID: 1776144353663422610, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
       propertyPath: breathSound
       value: 
       objectReference: {fileID: 8300000, guid: 6e5a8e7dc88c24310b00260669522ecf, type: 3}
@@ -25180,10 +25184,6 @@ PrefabInstance:
     - target: {fileID: 5413728192334987514, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_Name
       value: 'Enemy '
-      objectReference: {fileID: 0}
-    - target: {fileID: 8281624278529167299, guid: f19499a9a169146dca2edff3e3310882, type: 3}
-      propertyPath: dropChance
-      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
