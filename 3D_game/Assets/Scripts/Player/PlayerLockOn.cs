@@ -53,7 +53,7 @@ public class PlayerLockOn : MonoBehaviour
             CharacterStats targetStats = collider.GetComponent<CharacterStats>();
             
             // 살아있는지 체크
-            if (targetStats != null && targetStats.currentHealth > 0)
+            if (targetStats != null && targetStats.currentEgo > 0)
             {
                 // ★ [핵심 로직 변경] ★
                 // 3D 월드 좌표를 -> 2D 뷰포트 좌표(0~1)로 변환
@@ -160,7 +160,7 @@ public class PlayerLockOn : MonoBehaviour
         if (currentTarget == null) return true;
         
         var stats = currentTarget.GetComponent<CharacterStats>();
-        if (stats != null && stats.currentHealth <= 0) return true;
+        if (stats != null && stats.currentEgo <= 0) return true;
         
         return false;
     }

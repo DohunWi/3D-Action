@@ -24,11 +24,6 @@ public class Enemy : MonoBehaviour
     protected Animator _animator;
     protected CharacterStats _stats;
 
-    [Header("Loot (Nightmare Residue)")]
-    public GameObject memoryDropPrefab; // 기억의 파편 프리팹
-    public int minMemory = 10;
-    public int maxMemory = 20;
-
     [Header("Sensors (Patrol & Chase)")]
     public float detectionRange = 8.0f;     
     public float chaseGiveUpRange = 15.0f;  
@@ -111,7 +106,7 @@ public class Enemy : MonoBehaviour
     {
         if (_stats != null)
         {
-            _stats.OnPoiseBroken += HandlePoiseBroken; // 강인도 깨짐 -> 경직
+            _stats.OnComposureBroken += HandleComposureBroken; // 강인도 깨짐 -> 경직
             _stats.OnTakeDamage += HandleSuperArmorHit; // 그냥 피격 -> 빨간맛 연출
             _stats.OnDeath += OnDie;
         }
@@ -121,7 +116,7 @@ public class Enemy : MonoBehaviour
     {
         if (_stats != null)
         {
-            _stats.OnPoiseBroken -= HandlePoiseBroken;
+            _stats.OnComposureBroken -= HandleComposureBroken;
             _stats.OnTakeDamage -= HandleSuperArmorHit;
             _stats.OnDeath -= OnDie;
         }
@@ -255,7 +250,6 @@ public class Enemy : MonoBehaviour
                 GetComponent<Collider>().enabled = false;
                 _animator.SetTrigger(AnimID_Die);
                 Destroy(gameObject, 5f);
-                DropMemory();
                 break;
         }
     }
@@ -453,25 +447,11 @@ public class Enemy : MonoBehaviour
     {
         ChangeState(EnemyState.Die);
     }
-    protected void DropMemory()
-    {
-        if (memoryDropPrefab != null)
-        {
-            GameObject loot = Instantiate(memoryDropPrefab, transform.position + Vector3.up * 0.5f, Quaternion.identity);
-            
-            // 생성된 구슬에 "너는 50만큼의 기억이야"라고 주입
-            MemoryPickup pickup = loot.GetComponent<MemoryPickup>();
-            if (pickup != null)
-            {
-                pickup.memoryAmount = Random.Range(minMemory, maxMemory + 1);
-            }
-        }
-    }
 
     // --- 이벤트 핸들러 ---
 
     // 1. 강인도가 깨졌을 때 (Stat에서 호출해줌)
-    private void HandlePoiseBroken()
+    private void HandleComposureBroken()
     {
         if (currentState == EnemyState.Die || currentState == EnemyState.Down) return;
 

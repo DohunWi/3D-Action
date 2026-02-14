@@ -28,10 +28,10 @@ public class PlayerController : MonoBehaviour
     public float gravity = -20.0f;
     public float jumpHeight = 1.2f;
 
-    [Header("Stamina Costs")] // 행동별 소모량 설정
-    public float rollStaminaCost = 20f;
-    public float attackStaminaCost = 15f;
-    public float sprintStaminaCost = 10f; // 달리기 (초당 소모량)
+    [Header("Volition Costs")] // 행동별 소모량 설정
+    public float rollVolitionCost = 20f;
+    public float attackVolitionCost = 15f;
+    public float sprintVolitionCost = 10f; // 달리기 (초당 소모량)
 
     [Header("References")]
     public Transform cameraTransform;
@@ -428,7 +428,7 @@ public class PlayerController : MonoBehaviour
                 if (isSprinting)
                 {
                     // 지속 소모 (deltaTime 곱해서 프레임당 소모량 계산)
-                    if (_stats != null && _stats.UseStamina(sprintStaminaCost * Time.deltaTime))
+                    if (_stats != null && _stats.UseVolition(sprintVolitionCost * Time.deltaTime))
                     {
                         targetSpeed = sprintSpeed; // 스태미나 있으면 달리기
                     }
@@ -514,7 +514,7 @@ public class PlayerController : MonoBehaviour
         if (currentState == PlayerState.Locomotion && _isGrounded)
         {
             // 스태미나 없으면 구르기 불가
-            if (_stats != null && _stats.UseStamina(rollStaminaCost))
+            if (_stats != null && _stats.UseVolition(rollVolitionCost))
             {
                 ChangeState(PlayerState.Roll);
             }
@@ -538,7 +538,7 @@ public class PlayerController : MonoBehaviour
             }
             else // 일반 공격
             {
-                if (_stats.UseStamina(attackStaminaCost)) // 즉시 소모
+                if (_stats.UseVolition(attackVolitionCost)) // 즉시 소모
                 {
                     _comboStep = 0;
                     _comboInputReceived = false;
@@ -554,7 +554,7 @@ public class PlayerController : MonoBehaviour
             {
                 // [수정] UseStamina 대신 HasStamina로 확인만!
                 // "지금 당장 안 깎고, 나중에 때릴 때 깎을게. 근데 잔고는 있지?"
-                if (_stats.HasStamina(attackStaminaCost)) 
+                if (_stats.HasVolition(attackVolitionCost)) 
                 {
                     Debug.Log("콤보 예약됨 (스태미나 아직 안 깎음)");
                     _comboInputReceived = true;
@@ -603,7 +603,7 @@ public class PlayerController : MonoBehaviour
             Debug.LogWarning($"[{activeSkill.skillName}] 스킬에 애니메이션 이름이 없습니다!");
         }
         // 2. 마나 체크 (데이터에서 가져옴)
-        if (_stats != null && _stats.UseMana(activeSkill.manaCost))
+        if (_stats != null && _stats.UseLucidity(activeSkill.lucidityCost))
         {
             // 시전 사운드 재생
             if (activeSkill.castSound != null)
@@ -645,7 +645,7 @@ public class PlayerController : MonoBehaviour
                 var enemyStats = hit.GetComponent<CharacterStats>();
                 if (enemyStats != null)
                 {
-                    enemyStats.TakeDamage(finalDamage, activeSkill.poiseDamage, transform);
+                    enemyStats.TakeDamage(finalDamage, activeSkill.composureDamage, transform);
                 }
             }
         }
@@ -702,6 +702,20 @@ public class PlayerController : MonoBehaviour
         // GameManager 에게 알리기
         if (GameManager.Instance != null)
         {
+            PlayerWallet myWallet = GetComponent<PlayerWallet>();
+            
+            // 1. ★ 현재 가진 돈을 '유실물'로 등록 (위치 저장)
+            int currentMemory = myWallet.GetCurrentMemory();
+            GameManager.Instance.SaveLostMemory(currentMemory, transform.position);
+
+            // 2. ★ 내 지갑 0원으로 초기화 (중요!)
+            // 그래야 부활했을 때 빈털터리로 시작함
+            myWallet.SpendMemory(currentMemory); // 전부 소모(0으로 만듦)
+
+            // 3. 그 상태(0원)로 스탯 저장
+            GameManager.Instance.SavePlayerData(_stats, myWallet);
+
+            // 4. 게임 오버 처리
             GameManager.Instance.GameOver(); 
         }
     }
@@ -732,7 +746,7 @@ public class PlayerController : MonoBehaviour
             if (_comboInputReceived && _comboStep < maxComboCount - 1)
             {
                 // 여기서 실제로 스태미나 소모
-                if (_stats != null && _stats.UseStamina(attackStaminaCost))
+                if (_stats != null && _stats.UseVolition(attackVolitionCost))
                 {
                     // 결제 성공 -> 다음 공격 진행
                     _comboStep++;

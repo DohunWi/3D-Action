@@ -81,7 +81,7 @@ public class StatUpgradeUI : MonoBehaviour
     {
         if (playerStats == null || playerWallet == null) return;
         playerController.ChangeState(PlayerState.Interact);
-        // ★ 핵심: 켜는 게 아니라 투명도만 1로 올림
+        // ★ 켜는 게 아니라 투명도만 1로 올림
         UpdateUI();
         canvasGroup.alpha = 1f;
         canvasGroup.interactable = true;
@@ -99,7 +99,7 @@ public class StatUpgradeUI : MonoBehaviour
     public void Close()
     {
         playerController.ChangeState(PlayerState.Locomotion);
-        // ★ 핵심: 끄는 게 아니라 투명도만 0으로 내림
+        // ★ 끄는 게 아니라 투명도만 0으로 내림
         canvasGroup.alpha = 0f;
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;
@@ -117,8 +117,8 @@ public class StatUpgradeUI : MonoBehaviour
     {
         // 1. 공통 정보 갱신
         levelText.text = $"Lv. {playerStats.level}"; // 전체 레벨 (경험치 기반)
-        int currentMoney = playerWallet.GetCurrentMemory();
-        currentMemoryText.text = $"{currentMoney:N0}";
+        int currentMemory = playerWallet.GetCurrentMemory();
+        currentMemoryText.text = $"{currentMemory:N0}";
 
         // 2. 각 스탯 줄(Row)을 돌면서 정보 갱신
         foreach (var row in statRows)
@@ -138,13 +138,13 @@ public class StatUpgradeUI : MonoBehaviour
                 row.costText.text = $"{cost:N0}";
                 
                 // (D) 돈 부족하면 빨간색 표시
-                row.costText.color = (currentMoney >= cost) ? Color.white : Color.red;
+                row.costText.color = (currentMemory >= cost) ? Color.white : Color.red;
             }
 
             // (E) 돈 부족하면 버튼 비활성화 (선택 사항)
             if (row.upgradeButton != null)
             {
-                row.upgradeButton.interactable = (currentMoney >= cost);
+                row.upgradeButton.interactable = (currentMemory >= cost);
             }
         }
     }
@@ -159,11 +159,11 @@ public class StatUpgradeUI : MonoBehaviour
     {
         switch (type)
         {
-            case StatType.Vigor: return playerStats.vigor;
-            case StatType.Mind: return playerStats.mind;
-            case StatType.Endurance: return playerStats.endurance;
-            case StatType.Strength: return playerStats.strength;
-            case StatType.Dexterity: return playerStats.dexterity;
+            case StatType.Sanity: return playerStats.sanity;
+            case StatType.Awareness: return playerStats.awareness;
+            case StatType.Tenacity: return playerStats.tenacity;
+            case StatType.Conviction: return playerStats.conviction;
+            case StatType.Insight: return playerStats.insight;
             default: return 0;
         }
     }

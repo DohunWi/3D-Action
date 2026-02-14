@@ -59,7 +59,7 @@ public class Weapon : MonoBehaviour
         if (target != null)
         {
             // 데이터에서 데미지 가져오기
-            target.TakeDamage(this.damage, weaponData.poiseDamage, transform.root);
+            target.TakeDamage(this.damage, weaponData.composureDamage, transform.root);
             Debug.Log($"{gameObject}가 {this.damage}데미지를 입혔습니다.");
             _alreadyHitList.Add(other);
             OnAttackSuccess(other);

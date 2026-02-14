@@ -35,6 +35,16 @@ public class PlayerWallet : MonoBehaviour
         Debug.Log("기억이 희미해 강화를 할 수 없습니다... (잔액 부족)");
         return false;
     }
+    // 돈을 획득하는 함수
+    public void AddMemory(int amount)
+    {
+        currentMemory += amount;
+        Debug.Log($"기억의 파편 획득: +{amount} (현재: {currentMemory})");
 
+        // UI 갱신 이벤트 호출
+        OnMemoryChanged?.Invoke(currentMemory);
+        
+    }
     public int GetCurrentMemory() => currentMemory;
+    public void SetCurrentMemory(int memory) {currentMemory = memory;}
 }

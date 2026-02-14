@@ -13,8 +13,8 @@ public class SkillData : ScriptableObject
 
     [Header("Stats")]
     public float damage = 30.0f;
-    public float poiseDamage = 50.0f;
-    public float manaCost = 50.0f;
+    public float composureDamage = 50.0f;
+    public float lucidityCost = 50.0f;
     public float cooldown = 5.0f;
     public float impactRadius = 3.0f; // 범위 공격 반경
 

@@ -395,9 +395,9 @@ GameObject:
   - component: {fileID: 1510553376102375883}
   - component: {fileID: 1994267439414767722}
   - component: {fileID: 3000899070877089288}
-  - component: {fileID: 4993998554129921370}
   - component: {fileID: 4661863084572555302}
   - component: {fileID: 8475603469185271515}
+  - component: {fileID: 8281624278529167299}
   m_Layer: 3
   m_Name: 'Enemy '
   m_TagString: Enemy
@@ -506,25 +506,6 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
---- !u!114 &4993998554129921370
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5413728192334987514}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0dcadaca58f8b42a290bdf923d7ff492, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CharacterStats
-  maxHealth: 100
-  damagePopupPrefab: {fileID: 8890854200973032033, guid: 908d26bba5a4543499056936a46cda3b, type: 3}
-  hitVoice: {fileID: 8300000, guid: 3d63bca70bca64a26833259de5dc5a0c, type: 3}
-  deathVoice: {fileID: 8300000, guid: e06874a239e8e4576ae1f3daa1f152df, type: 3}
-  maxPoise: 50
-  poiseRecoveryTime: 3
-  poiseRecoveryRate: 10
 --- !u!95 &4661863084572555302
 Animator:
   serializedVersion: 7
@@ -644,6 +625,31 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &8281624278529167299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5413728192334987514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a48a1a816bdc347b69a8514565900f7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyStats
+  maxHealth: 100
+  damagePopupPrefab: {fileID: 8890854200973032033, guid: 908d26bba5a4543499056936a46cda3b, type: 3}
+  hitVoice: {fileID: 8300000, guid: 3d63bca70bca64a26833259de5dc5a0c, type: 3}
+  deathVoice: {fileID: 8300000, guid: e06874a239e8e4576ae1f3daa1f152df, type: 3}
+  maxPoise: 50
+  poiseRecoveryTime: 3
+  poiseRecoveryRate: 10
+  expReward: 50
+  memoryReward: 100
+  dropChance: 0.1
+  dropItemPrefab: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
+  animator: {fileID: 4661863084572555302}
+  myCollider: {fileID: 1510553376102375883}
 --- !u!1 &6988205574943937056
 GameObject:
   m_ObjectHideFlags: 0

@@ -814,7 +814,7 @@ GameObject:
   - component: {fileID: 56031218}
   - component: {fileID: 56031219}
   m_Layer: 5
-  m_Name: Row_Vigor
+  m_Name: Row_Sanity
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1167,19 +1167,67 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5330207629955882945, guid: f19499a9a169146dca2edff3e3310882, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5330207629955882945, guid: f19499a9a169146dca2edff3e3310882, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5413728192334987514, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_Name
       value: Enemy  (2)
       objectReference: {fileID: 0}
     - target: {fileID: 5413728192334987514, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f19499a9a169146dca2edff3e3310882, type: 3}
+--- !u!1 &112632117 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8943905680873142921, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
+  m_PrefabInstance: {fileID: 6620716935612169016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &112632119 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 4778021317134370750, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
+  m_PrefabInstance: {fileID: 6620716935612169016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!136 &112632123 stripped
+CapsuleCollider:
+  m_CorrespondingSourceObject: {fileID: 8614370314525801984, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
+  m_PrefabInstance: {fileID: 6620716935612169016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &112632126
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 112632117}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a48a1a816bdc347b69a8514565900f7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyStats
+  maxEgo: 100
+  damagePopupPrefab: {fileID: 8890854200973032033, guid: 908d26bba5a4543499056936a46cda3b, type: 3}
+  hitVoice: {fileID: 8300000, guid: 3d63bca70bca64a26833259de5dc5a0c, type: 3}
+  deathVoice: {fileID: 8300000, guid: e06874a239e8e4576ae1f3daa1f152df, type: 3}
+  maxComposure: 50
+  composureRecoveryTime: 3
+  composureRecoveryRate: 10
+  expReward: 200
+  memoryReward: 500
+  dropChance: 0.5
+  dropItemPrefab: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
+  animator: {fileID: 112632119}
+  myCollider: {fileID: 112632123}
 --- !u!1 &114893338
 GameObject:
   m_ObjectHideFlags: 0
@@ -2208,9 +2256,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Mind
-
-'
+  m_text: Awareness
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -3761,7 +3807,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Strength
+  m_text: Conviction
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -5791,7 +5837,7 @@ GameObject:
   - component: {fileID: 567672246}
   - component: {fileID: 567672247}
   m_Layer: 5
-  m_Name: HP Slider
+  m_Name: Ego Slider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7067,7 +7113,7 @@ GameObject:
   - component: {fileID: 682205952}
   - component: {fileID: 682205953}
   m_Layer: 5
-  m_Name: Stamina Slider
+  m_Name: Volition Slider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7222,7 +7268,7 @@ GameObject:
   - component: {fileID: 688553876}
   - component: {fileID: 688553877}
   m_Layer: 5
-  m_Name: 'MP Ease Slider '
+  m_Name: 'Lucidity Ease Slider '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8619,7 +8665,7 @@ GameObject:
   - component: {fileID: 768614296}
   - component: {fileID: 768614297}
   m_Layer: 5
-  m_Name: 'Stamina Ease Slider '
+  m_Name: 'Volition Ease Slider '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9872,7 +9918,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 900246191}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
@@ -10924,7 +10970,7 @@ GameObject:
   m_Component:
   - component: {fileID: 968181872}
   m_Layer: 5
-  m_Name: Stamina Bar
+  m_Name: Volition Bar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11037,7 +11083,7 @@ GameObject:
   - component: {fileID: 987662728}
   - component: {fileID: 987662729}
   m_Layer: 5
-  m_Name: Row_Enduarance
+  m_Name: Row_Tenacity
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11513,7 +11559,7 @@ Transform:
   m_GameObject: {fileID: 1032775515}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.50478, y: 1.2, z: -4.57449}
+  m_LocalPosition: {x: -2.67, y: 1.2, z: -1.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -11825,7 +11871,7 @@ GameObject:
   - component: {fileID: 1072627700}
   - component: {fileID: 1072627701}
   m_Layer: 5
-  m_Name: Hp Slider
+  m_Name: Ego Slider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -12428,7 +12474,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1105377013}
   m_Layer: 5
-  m_Name: MP Bar
+  m_Name: Lucidity Bar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -13402,6 +13448,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 510eb09bdf860477399c8e3252b2a7f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  lostMemoryPrefab: {fileID: 1926198637557703228, guid: 804d6dc9a37f14d09bf5fedcb1f582ec, type: 3}
+  hasLostMemory: 0
+  lostMemoryAmount: 0
+  lostMemoryPos: {x: 0, y: 0, z: 0}
+  lostSceneName: 
+  level: 1
+  currentExp: 0
+  maxExp: 100
+  memory: 0
+  sanity: 10
+  awareness: 10
+  tenacity: 10
+  conviction: 10
+  insight: 10
 --- !u!4 &1156151685
 Transform:
   m_ObjectHideFlags: 0
@@ -14039,7 +14099,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Vigor
+  m_text: 'Sanity
+
+'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -14899,7 +14961,7 @@ GameObject:
   - component: {fileID: 1317132746}
   - component: {fileID: 1317132747}
   m_Layer: 5
-  m_Name: 'HP Ease Slider '
+  m_Name: 'Ego Ease Slider '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -15106,7 +15168,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b47e06c7765b64f0aa738df7b02d3501, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BossHealthBar
-  hpSlider: {fileID: 1072627701}
+  egoSlider: {fileID: 1072627701}
   easeSlider: {fileID: 1922995790}
   bossNameText: {fileID: 1608803208}
   canvasGroup: {fileID: 1536280764}
@@ -15985,7 +16047,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Dexterity
+  m_text: Insight
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -16233,6 +16295,10 @@ PrefabInstance:
     - target: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
       propertyPath: m_Name
       value: Memory Fragment (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -16526,7 +16592,7 @@ GameObject:
   - component: {fileID: 1451403985}
   - component: {fileID: 1451403986}
   m_Layer: 5
-  m_Name: Row_Strength
+  m_Name: Row_Conviction
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -17288,7 +17354,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1479407856}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.009352914, y: 0.2634676, z: -0.0025545715, w: 0.9646196}
+  m_LocalRotation: {x: 0.016244918, y: 0.2168122, z: -0.0036084403, w: 0.97607154}
   m_LocalPosition: {x: 3.34, y: 1.95, z: -8.41}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -17651,7 +17717,7 @@ GameObject:
   - component: {fileID: 1517260535}
   - component: {fileID: 1517260536}
   m_Layer: 5
-  m_Name: Row_Dexterity
+  m_Name: Row_Insight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18480,6 +18546,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Memory Fragment (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -18989,7 +19059,7 @@ GameObject:
   - component: {fileID: 1669514853}
   - component: {fileID: 1669514854}
   m_Layer: 5
-  m_Name: MP Slider
+  m_Name: Lucidity Slider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -19310,7 +19380,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1746784112}
   m_Layer: 5
-  m_Name: HP Bar
+  m_Name: Ego Bar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -19818,7 +19888,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -35.07
+      value: -18.7
       objectReference: {fileID: 0}
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalPosition.y
@@ -19826,7 +19896,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 22.46
+      value: 14.6
       objectReference: {fileID: 0}
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalRotation.w
@@ -19856,13 +19926,21 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5330207629955882945, guid: f19499a9a169146dca2edff3e3310882, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5330207629955882945, guid: f19499a9a169146dca2edff3e3310882, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5413728192334987514, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_Name
       value: Enemy  (3)
       objectReference: {fileID: 0}
     - target: {fileID: 5413728192334987514, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -20583,7 +20661,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Enduarance
+  m_text: Tenacity
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -21560,7 +21638,7 @@ GameObject:
   - component: {fileID: 1964154984}
   - component: {fileID: 1964154985}
   m_Layer: 5
-  m_Name: Row_Mind
+  m_Name: Row_Awareness
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -22380,7 +22458,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d4ae688c179148128f918a1711483ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerWallet
-  currentMemory: 1000
+  currentMemory: 0
 --- !u!114 &2041866185 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1020272515353887902, guid: 4b2842af050d94ce0a6856ced5b70dc5, type: 3}
@@ -22866,12 +22944,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHUD
   player: {fileID: 2041866175}
-  hpSlider: {fileID: 567672247}
-  hpEaseSlider: {fileID: 1317132747}
-  mpSlider: {fileID: 1669514854}
-  mpEaseSlider: {fileID: 688553877}
-  staminaSlider: {fileID: 682205953}
-  staminaEaseSlider: {fileID: 768614297}
+  egoSlider: {fileID: 567672247}
+  egoEaseSlider: {fileID: 1317132747}
+  luciditySlider: {fileID: 1669514854}
+  lucidityEaseSlider: {fileID: 688553877}
+  volitionSlider: {fileID: 682205953}
+  volitionEaseSlider: {fileID: 768614297}
   memoryText: {fileID: 547755296}
   easeSpeed: 5
   widthMultiplier: 3
@@ -24549,7 +24627,7 @@ PrefabInstance:
       objectReference: {fileID: 1973077555650332}
     - target: {fileID: 2498099880806579533, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 3.21
+      value: 7.2
       objectReference: {fileID: 0}
     - target: {fileID: 2498099880806579533, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
       propertyPath: m_LocalPosition.y
@@ -24557,7 +24635,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2498099880806579533, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 16.48
+      value: 37
       objectReference: {fileID: 0}
     - target: {fileID: 2498099880806579533, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
       propertyPath: m_LocalRotation.w
@@ -24623,7 +24701,8 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 1942946312690228896, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 7571883335145606774, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
@@ -24632,7 +24711,10 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6842173016850740879, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5342033523993905380}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8943905680873142921, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 112632126}
   m_SourcePrefab: {fileID: 100100000, guid: 2e4c50002c2a64cae94f5060afa43204, type: 3}
 --- !u!4 &6803616332130292699 stripped
 Transform:
@@ -24776,6 +24858,10 @@ PrefabInstance:
     - target: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
       propertyPath: m_Name
       value: Memory Fragment
+      objectReference: {fileID: 0}
+    - target: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -25043,13 +25129,9 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1994267439414767722, guid: f19499a9a169146dca2edff3e3310882, type: 3}
-      propertyPath: memoryDropPrefab
-      value: 
-      objectReference: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 16.97
+      value: 9.952
       objectReference: {fileID: 0}
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalPosition.y
@@ -25057,7 +25139,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 14.68
+      value: 5.739
       objectReference: {fileID: 0}
     - target: {fileID: 4439982381609190403, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_LocalRotation.w
@@ -25098,6 +25180,10 @@ PrefabInstance:
     - target: {fileID: 5413728192334987514, guid: f19499a9a169146dca2edff3e3310882, type: 3}
       propertyPath: m_Name
       value: 'Enemy '
+      objectReference: {fileID: 0}
+    - target: {fileID: 8281624278529167299, guid: f19499a9a169146dca2edff3e3310882, type: 3}
+      propertyPath: dropChance
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

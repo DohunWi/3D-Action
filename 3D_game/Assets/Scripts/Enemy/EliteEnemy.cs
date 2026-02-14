@@ -4,8 +4,8 @@ using System.Collections;
 public class EliteEnemy : Enemy
 {
     [Header("--- Elite Spec Settings ---")]
-    public float eliteMaxHealth = 500f; // 일반 몹(100)의 8배
-    public float elitePoise = 100f;     // 강인도 증가
+    public float eliteMaxEgo = 500f; // 일반 몹(100)의 8배
+    public float eliteComposure = 100f;     // 강인도 증가
 
     [Header("--- Elite Skill: Fire Breath ---")]
     public float fireBreathCooldown = 10.0f; 
@@ -18,7 +18,7 @@ public class EliteEnemy : Enemy
     public Transform mouthPosition;  // (선택) 발사 위치 보정용
 
     [Header("--- Enrage Settings (Phase 2) ---")]
-    public float enrageHealthRatio = 0.4f; // 체력 40% 이하일 때 광폭화
+    public float enrageEgoRatio = 0.4f; // 체력 40% 이하일 때 광폭화
     public float speedBuff = 1.3f;         // 이동 속도 증가 배율
     public ParticleSystem auraParticle;    // 붉은 오라 파티클
 
@@ -28,7 +28,7 @@ public class EliteEnemy : Enemy
     [Header("--- UI Settings ---")]
     public string bossName = "Mutant Overlord"; // 보스 이름
     // 씬에 있는 UI를 직접 연결하거나, 프리팹이면 Find로 찾음
-    public BossHealthBar bossHealthBar;
+    public BossEgoBar bossEgoBar;
 
     // 내부 상태 변수
     private float _lastFireBreathTime; 
@@ -42,12 +42,12 @@ public class EliteEnemy : Enemy
         // 1. 엘리트 스펙 적용
         if (_stats != null)
         {
-            _stats.maxHealth = eliteMaxHealth;
-            _stats.currentHealth = eliteMaxHealth;
-            _stats.maxPoise = elitePoise;
+            _stats.maxEgo = eliteMaxEgo;
+            _stats.currentEgo = eliteMaxEgo;
+            _stats.maxComposure = eliteComposure;
             
             // 체력 변경 이벤트 구독 (광폭화 체크용)
-            _stats.OnHealthChanged += CheckEnrage;
+            _stats.OnEgoChanged += CheckEnrage;
             // 콤보 시퀀스 변경
             _comboSequence = new int[] { 3, 2, 0, 2, 1, 3 };
         }
@@ -65,7 +65,7 @@ public class EliteEnemy : Enemy
             auraParticle.Stop();
         }
         // ★ [추가] 보스 체력바 초기화 및 활성화
-        if (bossHealthBar == null)
+        if (bossEgoBar == null)
         {
             // 만약 인스펙터 연결 안 했으면 찾아서라도 연결
             //bossHealthBar = FindObjectOfType<BossHealthBar>();
@@ -106,9 +106,9 @@ public class EliteEnemy : Enemy
         Debug.Log("⚔️ BOSS FIGHT STARTED! ⚔️");
 
         // 1. UI 켜기 (페이드 인)
-        if (bossHealthBar != null && _stats != null)
+        if (bossEgoBar != null && _stats != null)
         {
-            bossHealthBar.Initialize(_stats, bossName);
+            bossEgoBar.Initialize(_stats, bossName);
         }
 
         // 2. (선택) 보스전 배경음악(BGM)으로 교체
@@ -127,16 +127,16 @@ public class EliteEnemy : Enemy
         Debug.Log("💤 BOSS FIGHT ENDED (Player ran away)");
 
         // 1. UI 숨기기 (페이드 아웃)
-        if (bossHealthBar != null)
+        if (bossEgoBar != null)
         {
-            bossHealthBar.Hide(); 
+            bossEgoBar.Hide(); 
         }
 
         // 2. (선택) 보스 체력 리셋?
         // 다크소울처럼 도망가면 보스 체력을 다시 꽉 채우고 싶다면 주석 해제
         if (_stats != null) 
         {
-            _stats.currentHealth = _stats.maxHealth;
+            _stats.currentEgo = _stats.maxEgo;
             // UI도 다시 꽉 찬 상태로 갱신해줘야 함 (Initialize 재호출 등)
         }
 
@@ -275,7 +275,7 @@ public class EliteEnemy : Enemy
         if (_isEnraged) return;
 
         // 체력이 설정 비율 이하로 떨어지면 광폭화
-        if (current <= max * enrageHealthRatio)
+        if (current <= max * enrageEgoRatio)
         {
             ActivateEnrage();
         }

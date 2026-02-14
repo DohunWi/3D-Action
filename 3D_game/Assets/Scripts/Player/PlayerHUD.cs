@@ -9,15 +9,15 @@ public class PlayerHUD : MonoBehaviour
     private PlayerStats _playerStats; 
     private PlayerWallet _playerWallet; 
 
-    [Header("Health UI")]
-    public Slider hpSlider;     
-    public Slider hpEaseSlider;   
-    [Header("Mana UI")]
-    public Slider mpSlider;     
-    public Slider mpEaseSlider;   
-    [Header("Stamina UI")]
-    public Slider staminaSlider;     
-    public Slider staminaEaseSlider;   
+    [Header("Ego UI")]
+    public Slider egoSlider;     
+    public Slider egoEaseSlider;   
+    [Header("Lucidity UI")]
+    public Slider luciditySlider;     
+    public Slider lucidityEaseSlider;   
+    [Header("Volition UI")]
+    public Slider volitionSlider;     
+    public Slider volitionEaseSlider;   
 
     [Header("Memory UI")]
     public TMPro.TextMeshProUGUI memoryText;
@@ -30,9 +30,9 @@ public class PlayerHUD : MonoBehaviour
     public float maxWidth = 1000f; // 길이 제한
 
     // 코루틴 관리용 변수
-    private Coroutine _hpCoroutine;
-    private Coroutine _mpCoroutine;
-    private Coroutine _staminaCoroutine;
+    private Coroutine _egoCoroutine;
+    private Coroutine _lucidityCoroutine;
+    private Coroutine _volitionCoroutine;
 
     private void Start()
     {
@@ -59,23 +59,23 @@ public class PlayerHUD : MonoBehaviour
         _playerStats = playerStats;
 
         // 1. 초기값 설정 및 길이 조절 (InitBar 안에서 ResizeBar 호출)
-        InitBar(hpSlider, hpEaseSlider, _playerStats.maxHealth, _playerStats.currentHealth);
-        InitBar(mpSlider, mpEaseSlider, _playerStats.maxMana, _playerStats.currentMana);
-        InitBar(staminaSlider, staminaEaseSlider, _playerStats.maxStamina, _playerStats.currentStamina);
+        InitBar(egoSlider, egoEaseSlider, _playerStats.maxEgo, _playerStats.currentEgo);
+        InitBar(luciditySlider, lucidityEaseSlider, _playerStats.maxLucidity, _playerStats.currentLucidity);
+        InitBar(volitionSlider, volitionEaseSlider, _playerStats.maxVolition, _playerStats.currentVolition);
 
         UpdateMemoriesUI(_playerWallet.GetCurrentMemory());
 
         // 2. 이벤트 구독
         // 중복 구독 방지를 위해 먼저 뺐다가 더함
-        _playerStats.OnHealthChanged -= UpdateHP;
-        _playerStats.OnManaChanged -= UpdateMP;
-        _playerStats.OnStaminaChanged -= UpdateStamina;
+        _playerStats.OnEgoChanged -= UpdateEgo;
+        _playerStats.OnLucidityChanged -= UpdateLucidity;
+        _playerStats.OnVolitionChanged -= UpdateVolition;
         _playerWallet.OnMemoryChanged -= UpdateMemoriesUI;
         _playerStats.OnStatsRefreshed -= RefreshAllBars; // ★ 추가된 이벤트
 
-        _playerStats.OnHealthChanged += UpdateHP;
-        _playerStats.OnManaChanged += UpdateMP;
-        _playerStats.OnStaminaChanged += UpdateStamina;
+        _playerStats.OnEgoChanged += UpdateEgo;
+        _playerStats.OnLucidityChanged += UpdateLucidity;
+        _playerStats.OnVolitionChanged += UpdateVolition;
         _playerWallet.OnMemoryChanged += UpdateMemoriesUI;
         _playerStats.OnStatsRefreshed += RefreshAllBars; // ★ 추가된 이벤트
     }
@@ -84,9 +84,9 @@ public class PlayerHUD : MonoBehaviour
     {
         if (_playerStats != null)
         {
-            _playerStats.OnHealthChanged -= UpdateHP;
-            _playerStats.OnManaChanged -= UpdateMP;
-            _playerStats.OnStaminaChanged -= UpdateStamina;
+            _playerStats.OnEgoChanged -= UpdateEgo;
+            _playerStats.OnLucidityChanged -= UpdateLucidity;
+            _playerStats.OnVolitionChanged -= UpdateVolition;
         }
         if (_playerWallet != null)
         {
@@ -98,131 +98,131 @@ public class PlayerHUD : MonoBehaviour
     // ---------------------------------------------------------
     // 1. HP 업데이트 로직
     // ---------------------------------------------------------
-    private void UpdateHP(float current, float max)
+    private void UpdateEgo(float current, float max)
     {
         // ★ 최대 체력이 변했다면 길이와 MaxValue 갱신
-        if (hpSlider.maxValue != max)
+        if (egoSlider.maxValue != max)
         {
-            hpSlider.maxValue = max;
-            if (hpEaseSlider != null) hpEaseSlider.maxValue = max;
-            ResizeBar(hpSlider, max);
-            ResizeBar(hpEaseSlider, max);
+            egoSlider.maxValue = max;
+            if (egoEaseSlider != null) egoEaseSlider.maxValue = max;
+            ResizeBar(egoSlider, max);
+            ResizeBar(egoEaseSlider, max);
         }
 
-        hpSlider.value = current;
+        egoSlider.value = current;
 
         // 잔상 효과
-        if (hpSlider.value > hpEaseSlider.value)
+        if (egoSlider.value > egoEaseSlider.value)
         {
-            hpEaseSlider.value = hpSlider.value;
-            if (_hpCoroutine != null) StopCoroutine(_hpCoroutine);
-            _hpCoroutine = null;
+            egoEaseSlider.value = egoSlider.value;
+            if (_egoCoroutine != null) StopCoroutine(_egoCoroutine);
+            _egoCoroutine = null;
         }
-        else if (hpSlider.value < hpEaseSlider.value)
+        else if (egoSlider.value < egoEaseSlider.value)
         {
-            if (_hpCoroutine == null) _hpCoroutine = StartCoroutine(EaseHPProcess());
+            if (_egoCoroutine == null) _egoCoroutine = StartCoroutine(EaseEgoProcess());
         }
     }
 
-    private IEnumerator EaseHPProcess()
+    private IEnumerator EaseEgoProcess()
     {
-        while (hpEaseSlider.value > hpSlider.value)
+        while (egoEaseSlider.value > egoSlider.value)
         {
-            hpEaseSlider.value = Mathf.Lerp(hpEaseSlider.value, hpSlider.value, Time.deltaTime * easeSpeed);
-            if (Mathf.Abs(hpEaseSlider.value - hpSlider.value) < 0.01f)
+            egoEaseSlider.value = Mathf.Lerp(egoEaseSlider.value, egoSlider.value, Time.deltaTime * easeSpeed);
+            if (Mathf.Abs(egoEaseSlider.value - egoSlider.value) < 0.01f)
             {
-                hpEaseSlider.value = hpSlider.value;
+                egoEaseSlider.value = egoSlider.value;
                 break;
             }
             yield return null;
         }
-        _hpCoroutine = null;
+        _egoCoroutine = null;
     }
 
     // ---------------------------------------------------------
     // 2. MP 업데이트 로직
     // ---------------------------------------------------------
-    private void UpdateMP(float current, float max)
+    private void UpdateLucidity(float current, float max)
     {
         // ★ 최대 마나가 변했다면 길이와 MaxValue 갱신
-        if (mpSlider.maxValue != max)
+        if (luciditySlider.maxValue != max)
         {
-            mpSlider.maxValue = max;
-            if (mpEaseSlider != null) mpEaseSlider.maxValue = max;
-            ResizeBar(mpSlider, max);
-            ResizeBar(mpEaseSlider, max);
+            luciditySlider.maxValue = max;
+            if (lucidityEaseSlider != null) lucidityEaseSlider.maxValue = max;
+            ResizeBar(luciditySlider, max);
+            ResizeBar(lucidityEaseSlider, max);
         }
 
-        mpSlider.value = current;
+        luciditySlider.value = current;
 
-        if (mpSlider.value > mpEaseSlider.value)
+        if (luciditySlider.value > lucidityEaseSlider.value)
         {
-            mpEaseSlider.value = mpSlider.value;
-            if (_mpCoroutine != null) StopCoroutine(_mpCoroutine);
-            _mpCoroutine = null;
+            lucidityEaseSlider.value = luciditySlider.value;
+            if (_lucidityCoroutine != null) StopCoroutine(_lucidityCoroutine);
+            _lucidityCoroutine = null;
         }
-        else if (mpSlider.value < mpEaseSlider.value)
+        else if (luciditySlider.value < lucidityEaseSlider.value)
         {
-            if (_mpCoroutine == null) _mpCoroutine = StartCoroutine(EaseMPProcess());
+            if (_lucidityCoroutine == null) _lucidityCoroutine = StartCoroutine(EaseLucidityProcess());
         }
     }
 
-    private IEnumerator EaseMPProcess()
+    private IEnumerator EaseLucidityProcess()
     {
-        while (mpEaseSlider.value > mpSlider.value)
+        while (lucidityEaseSlider.value > luciditySlider.value)
         {
-            mpEaseSlider.value = Mathf.Lerp(mpEaseSlider.value, mpSlider.value, Time.deltaTime * easeSpeed);
-            if (Mathf.Abs(mpEaseSlider.value - mpSlider.value) < 0.01f)
+            lucidityEaseSlider.value = Mathf.Lerp(lucidityEaseSlider.value, luciditySlider.value, Time.deltaTime * easeSpeed);
+            if (Mathf.Abs(lucidityEaseSlider.value - luciditySlider.value) < 0.01f)
             {
-                mpEaseSlider.value = mpSlider.value;
+                lucidityEaseSlider.value = luciditySlider.value;
                 break;
             }
             yield return null;
         }
-        _mpCoroutine = null;
+        _lucidityCoroutine = null;
     }
 
     // ---------------------------------------------------------
     // 3. 스태미나 업데이트 로직
     // ---------------------------------------------------------
-    private void UpdateStamina(float current, float max)
+    private void UpdateVolition(float current, float max)
     {
         // ★ 최대 스태미나가 변했다면 길이와 MaxValue 갱신
-        if (staminaSlider.maxValue != max)
+        if (volitionSlider.maxValue != max)
         {
-            staminaSlider.maxValue = max;
-            if (staminaEaseSlider != null) staminaEaseSlider.maxValue = max;
-            ResizeBar(staminaSlider, max);
-            ResizeBar(staminaEaseSlider, max);
+            volitionSlider.maxValue = max;
+            if (volitionEaseSlider != null) volitionEaseSlider.maxValue = max;
+            ResizeBar(volitionSlider, max);
+            ResizeBar(volitionEaseSlider, max);
         }
 
-        staminaSlider.value = current;
+        volitionSlider.value = current;
 
-        if (staminaSlider.value > staminaEaseSlider.value)
+        if (volitionSlider.value > volitionEaseSlider.value)
         {
-            staminaEaseSlider.value = staminaSlider.value;
-            if (_staminaCoroutine != null) StopCoroutine(_staminaCoroutine);
-            _staminaCoroutine = null;
+            volitionEaseSlider.value = volitionSlider.value;
+            if (_volitionCoroutine != null) StopCoroutine(_volitionCoroutine);
+            _volitionCoroutine = null;
         }
-        else if (staminaSlider.value < staminaEaseSlider.value)
+        else if (volitionSlider.value < volitionEaseSlider.value)
         {
-            if (_staminaCoroutine == null) _staminaCoroutine = StartCoroutine(EaseStaminaProcess());
+            if (_volitionCoroutine == null) _volitionCoroutine = StartCoroutine(EaseStaminaProcess());
         }
     }
 
     private IEnumerator EaseStaminaProcess()
     {
-        while (staminaEaseSlider.value > staminaSlider.value)
+        while (volitionEaseSlider.value > volitionSlider.value)
         {
-            staminaEaseSlider.value = Mathf.Lerp(staminaEaseSlider.value, staminaSlider.value, Time.deltaTime * easeSpeed);
-            if (Mathf.Abs(staminaEaseSlider.value - staminaSlider.value) < 0.01f)
+            volitionEaseSlider.value = Mathf.Lerp(volitionEaseSlider.value, volitionSlider.value, Time.deltaTime * easeSpeed);
+            if (Mathf.Abs(volitionEaseSlider.value - volitionSlider.value) < 0.01f)
             {
-                staminaEaseSlider.value = staminaSlider.value;
+                volitionEaseSlider.value = volitionSlider.value;
                 break;
             }
             yield return null;
         }
-        _staminaCoroutine = null;
+        _volitionCoroutine = null;
     }
 
     // ---------------------------------------------------------
@@ -230,9 +230,9 @@ public class PlayerHUD : MonoBehaviour
     // ---------------------------------------------------------
     private void RefreshAllBars()
     {
-        UpdateHP(_playerStats.currentHealth, _playerStats.maxHealth);
-        UpdateMP(_playerStats.currentMana, _playerStats.maxMana);
-        UpdateStamina(_playerStats.currentStamina, _playerStats.maxStamina);
+        UpdateEgo(_playerStats.currentEgo, _playerStats.maxEgo);
+        UpdateLucidity(_playerStats.currentLucidity, _playerStats.maxLucidity);
+        UpdateVolition(_playerStats.currentVolition, _playerStats.maxVolition);
     }
     private void UpdateMemoriesUI(int amount)
     {

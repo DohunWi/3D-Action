@@ -2,10 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro; // TextMeshPro 쓴다면 필수
 
-public class BossHealthBar : MonoBehaviour
+public class BossEgoBar : MonoBehaviour
 {
     [Header("UI Components")]
-    public Slider hpSlider;    // 앞쪽 빨간 바
+    public Slider egoSlider;    // 앞쪽 빨간 바
     public Slider easeSlider;  // 뒤쪽 흰색 잔상 바
     public TextMeshProUGUI bossNameText; // 보스 이름
     public CanvasGroup canvasGroup; // 페이드 효과용
@@ -27,14 +27,14 @@ public class BossHealthBar : MonoBehaviour
     private void Update()
     {
         // 잔상 효과 (Lerp): 붉은색 바보다 잔상 바가 더 크면 천천히 줄어듦
-        if (hpSlider.value < easeSlider.value)
+        if (egoSlider.value < easeSlider.value)
         {
-            easeSlider.value = Mathf.Lerp(easeSlider.value, hpSlider.value, easeSpeed);
+            easeSlider.value = Mathf.Lerp(easeSlider.value, egoSlider.value, easeSpeed);
             
             // 거의 다 왔으면 딱 맞춤 (연산 낭비 방지)
-            if (Mathf.Abs(easeSlider.value - hpSlider.value) < 0.01f)
+            if (Mathf.Abs(easeSlider.value - egoSlider.value) < 0.01f)
             {
-                easeSlider.value = hpSlider.value;
+                easeSlider.value = egoSlider.value;
             }
         }
     }
@@ -48,14 +48,14 @@ public class BossHealthBar : MonoBehaviour
         if (bossNameText != null) bossNameText.text = bossName;
 
         // 2. 슬라이더 최대값 설정
-        hpSlider.maxValue = stats.maxHealth;
-        hpSlider.value = stats.currentHealth;
+        egoSlider.maxValue = stats.maxEgo;
+        egoSlider.value = stats.currentEgo;
         
-        easeSlider.maxValue = stats.maxHealth;
-        easeSlider.value = stats.currentHealth;
+        easeSlider.maxValue = stats.maxEgo;
+        easeSlider.value = stats.currentEgo;
 
         // 3. 이벤트 구독 (체력 변할 때마다 UpdateHealthUI 실행)
-        _targetStats.OnHealthChanged += UpdateHealthUI;
+        _targetStats.OnEgoChanged += UpdateEgoUI;
         _targetStats.OnDeath += Hide; // 죽으면 숨기기
 
         // 4. UI 등장 (페이드 인)
@@ -67,16 +67,16 @@ public class BossHealthBar : MonoBehaviour
         // 이벤트 구독 해제 (메모리 누수 방지)
         if (_targetStats != null)
         {
-            _targetStats.OnHealthChanged -= UpdateHealthUI;
+            _targetStats.OnEgoChanged -= UpdateEgoUI;
             _targetStats.OnDeath -= Hide;
         }
     }
 
     // 이벤트가 발생할 때 실행될 함수
-    private void UpdateHealthUI(float current, float max)
+    private void UpdateEgoUI(float current, float max)
     {
         // 빨간 바는 즉시 줄어듦 -> 뒤의 Ease 바는 Update에서 천천히 따라옴
-        hpSlider.value = current;
+        egoSlider.value = current;
     }
 
     private System.Collections.IEnumerator FadeIn()

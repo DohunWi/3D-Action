@@ -4,8 +4,8 @@ using UnityEngine.UI;
 public class EnemyHealthUI : MonoBehaviour
 {
     [Header("References")]
-    public Slider healthBar;
-    public Canvas healthCanvas; // 캔버스 자체 (죽었을 때 끄기 위해)
+    public Slider EgoBar;
+    public Canvas egoCanvas; // 캔버스 자체 (죽었을 때 끄기 위해)
 
     private CharacterStats _myStats;
     private Enemy _enemyController;
@@ -23,26 +23,26 @@ public class EnemyHealthUI : MonoBehaviour
         if (_myStats != null)
         {
             // 이벤트 구독
-            _myStats.OnHealthChanged += UpdateHealthUI;
+            _myStats.OnEgoChanged += UpdateEgoUI;
             
         }
         
         // 캔버스 초기 설정
-        if (healthCanvas != null)
+        if (egoCanvas != null)
         {
-            if (healthCanvas.worldCamera == null)
-                healthCanvas.worldCamera = _mainCamera;
+            if (egoCanvas.worldCamera == null)
+                egoCanvas.worldCamera = _mainCamera;
                 
             // ★ 게임오브젝트를 끄지 말고, 캔버스 컴포넌트만 끔
             // 그래야 이 스크립트(Update)가 계속 돌아감.
-            healthCanvas.enabled = false; 
+            egoCanvas.enabled = false; 
         }
     }
 
     private void Update()
     {
         // 정보가 없으면 실행 안 함
-        if (healthCanvas == null || _enemyController == null || _myStats == null) return;
+        if (egoCanvas == null || _enemyController == null || _myStats == null) return;
 
         // 1. 현재 몬스터의 상태 확인
         EnemyState state = _enemyController.currentState;
@@ -68,26 +68,26 @@ public class EnemyHealthUI : MonoBehaviour
         }
 
         // 죽었으면 무조건 숨김 (안전장치)
-        if (_myStats.currentHealth <= 0) shouldShow = false;
+        if (_myStats.currentEgo <= 0) shouldShow = false;
 
         // 3. 상태 적용 (Canvas 컴포넌트의 체크박스만 껐다 켰다 함)
-        if (healthCanvas.enabled != shouldShow)
+        if (egoCanvas.enabled != shouldShow)
         {
-            healthCanvas.enabled = shouldShow;
+            egoCanvas.enabled = shouldShow;
         }
 
         // 4. 빌보드 (캔버스가 보일 때만 카메라 바라보기)
         if (shouldShow && _mainCamera != null)
         {
-            healthCanvas.transform.rotation = _mainCamera.transform.rotation;
+            egoCanvas.transform.rotation = _mainCamera.transform.rotation;
         }
     }
 
-    private void UpdateHealthUI(float current, float max)
+    private void UpdateEgoUI(float current, float max)
     {
-        if (healthBar != null)
+        if (EgoBar != null)
         {
-            healthBar.value = current / max;
+            EgoBar.value = current / max;
         }
     }
 
@@ -96,7 +96,7 @@ public class EnemyHealthUI : MonoBehaviour
         // 이벤트 해제
         if (_myStats != null)
         {
-            _myStats.OnHealthChanged -= UpdateHealthUI;
+            _myStats.OnEgoChanged -= UpdateEgoUI;
         }
     }
 }

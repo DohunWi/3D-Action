@@ -11,12 +11,12 @@ public class WeaponData : ScriptableObject
 
     [Header("Stats")]
     public float damage = 10f;
-    public float poiseDamage = 10f;
+    public float composureDamage = 10f;
     public float attackRange = 1.5f;
     
     [Header("Scaling")]
     // 0.0 (보정없음) ~ 2.0 (S등급) 등등
-    public float strengthScaling = 1.0f;
+    public float convictionScaling = 1.0f;
 
     [Header("Combo Settings")]
     // ★ 콤보 단계별 데미지 배율 (인스펙터에서 설정)
