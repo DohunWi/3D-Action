@@ -30,6 +30,7 @@ public class PlayerStats : CharacterStats
 
     [Header("Player Specific")]
     public PlayerController _playerController; // 상태 확인용 연결
+    public PlayerPotion _playerPotion;
     public float parryAngle = 90f; // 전방 90도 안에서 온 공격만 막기
 
     [Header("Volition Settings")] // Volition(Stamina) 설정
@@ -55,9 +56,10 @@ public class PlayerStats : CharacterStats
     // 부모의 TakeDamage를 덮어씀 (Override)
     private void Awake()
     {
-        if (_playerController == null)
+        if (_playerController == null || _playerPotion == null)
         {
             _playerController = GetComponent<PlayerController>();
+            _playerPotion = GetComponent<PlayerPotion>();
         }
     }
     public override void Start()
@@ -66,7 +68,7 @@ public class PlayerStats : CharacterStats
         if (GameManager.Instance != null)
         {
             PlayerWallet myWallet = GetComponent<PlayerWallet>();
-            GameManager.Instance.LoadPlayerData(this, myWallet);
+            GameManager.Instance.ApplyStatsToPlayer(this, myWallet);
         }
 
         // 1. 스탯 먼저 계산 (이게 maxHealth, maxMana 등을 설정함)
@@ -309,8 +311,29 @@ public class PlayerStats : CharacterStats
         
         // 레벨업 사운드/이펙트 재생
         // if(GameFeelManager.Instance != null) GameFeelManager.Instance.PlayLevelUpEffect();
-        
+        if(level % 5 == 0)
+        {
+            _playerPotion.AddMaxPotion(1);
+        }
         // UI 갱신
         OnStatsRefreshed?.Invoke();
+    }
+    // ------------------------------
+    // 체력 회복 시스템 - 자아(Ego) 회복 함수 추가
+    // ------------------------------
+    public void RestoreEgo(float amount)
+    {
+        if (currentEgo >= maxEgo) return; // 이미 풀피면 무시
+
+        currentEgo += amount;
+        
+        // 최대치 넘지 않게 보정
+        if (currentEgo > maxEgo) currentEgo = maxEgo;
+
+        // UI 갱신 이벤트 호출 (이름 확인 필요: OnEgoChanged 등)
+        InvokeEgoChanged(currentEgo, maxEgo);
+
+        // (선택) 회복 이펙트/사운드 재생 등
+        Debug.Log($"<color=green>자아 회복! (+{amount}) 현재: {currentEgo}</color>");
     }
 }

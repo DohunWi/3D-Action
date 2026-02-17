@@ -106,6 +106,11 @@ public class CharacterStats : MonoBehaviour, IDamageable
             Die(attacker);
         }
     }
+    // 자식들이 이벤트를 부를 수 있게 해주는 '대리자 함수'
+    protected void InvokeEgoChanged(float current, float max)
+    {
+        OnEgoChanged?.Invoke(current, max);
+    }
 
     protected virtual void Die(Transform attacker)
     {

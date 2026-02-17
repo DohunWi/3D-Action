@@ -19,15 +19,20 @@ public class MemoryAltar : MonoBehaviour, IInteractable
             // 1. UI 열기
             upgradeUI.Open();
 
-            // 2. (선택) 체력/포션 회복 로직 추가 가능
-            // var stats = player.GetComponent<PlayerStats>();
-            // if (stats != null) stats.HealFull(); 
+            // 2. 체력/포션 회복 로직 추가 가능
+            var stats = player.GetComponent<PlayerStats>();
+            if (stats != null) stats.RestoreEgo(stats.maxEgo); 
+            var potions = player.GetComponent<PlayerPotion>();
+            if (potions != null) potions.RefillPotions(); 
 
             // 3. 사운드 재생
             if (interactSound != null) 
             {
                 AudioSource.PlayClipAtPoint(interactSound, transform.position);
             }
+            // 4. 저장 (현재 Memory와 위치를 파일로 기록)
+            GameManager.Instance.SaveGameToJson(stats, potions);
+            Debug.Log("기억의 제단: 휴식 및 저장 완료.");
         }
         else
         {

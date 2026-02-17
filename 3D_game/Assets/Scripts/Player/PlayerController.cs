@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 // 플레이어 상태 정의
 public enum PlayerState
@@ -12,7 +13,8 @@ public enum PlayerState
     Parry,      // 패링
     Hit,        // 피격
     Die,         // 사망
-    Interact  // 상호작용
+    Interact,  // 상호작용
+    UseItem     // 아이템 사용
 }
 
 [RequireComponent(typeof(CharacterController))]
@@ -333,6 +335,9 @@ public class PlayerController : MonoBehaviour
                 Time.timeScale = 0f;
                 Cursor.visible = true;
                 Cursor.lockState = CursorLockMode.None;
+                break;
+
+            case PlayerState.UseItem:
                 break;
         }
     }
@@ -695,7 +700,9 @@ public class PlayerController : MonoBehaviour
         // 그 외 상태면 피격 처리
         ChangeState(PlayerState.Hit);
     }
-
+    //-----------------------------
+    // Death
+    //-----------------------------
     private void OnDie()
     {
         ChangeState(PlayerState.Die);
@@ -712,12 +719,33 @@ public class PlayerController : MonoBehaviour
             // 그래야 부활했을 때 빈털터리로 시작함
             myWallet.SpendMemory(currentMemory); // 전부 소모(0으로 만듦)
 
-            // 3. 그 상태(0원)로 스탯 저장
-            GameManager.Instance.SavePlayerData(_stats, myWallet);
+            StartCoroutine(DeathSequence());
 
             // 4. 게임 오버 처리
-            GameManager.Instance.GameOver(); 
+            // GameManager.Instance.GameOver(); 
         }
+    }
+    public void EndOfDeath()
+    {
+        GameManager.Instance.RespawnAtAltar();
+    }
+    IEnumerator DeathSequence()
+    {
+        Debug.Log("💀 YOU DIED...");
+
+        // ★ [추가] 데스 패널 서서히 등장
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowDeathPanel();
+        }
+        
+        // 사망 애니메이션이 충분히 연출될 시간 대기
+        // (화면이 점점 어두워지는 Fade Out 효과가 있다면 여기서 실행)
+        yield return new WaitForSeconds(5.0f);
+
+        // D. 매니저에게 부활 요청
+        // -> 마지막 세이브 로드 + 돈 0원 처리 + 씬 재시작
+        GameManager.Instance.RespawnAtAltar();
     }
 
     // --- Helper Functions ---

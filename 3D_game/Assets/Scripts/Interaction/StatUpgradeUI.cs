@@ -20,6 +20,7 @@ public class StatUpgradeUI : MonoBehaviour
     public PlayerStats playerStats;
     public PlayerWallet playerWallet;
     public PlayerController playerController;
+    public PlayerPotion playerPotion;
 
     [Header("UI References")]
     public CanvasGroup canvasGroup;
@@ -186,6 +187,9 @@ public class StatUpgradeUI : MonoBehaviour
             playerWallet.SpendMemory(cost);
             playerStats.UpgradeStat(type);
             UpdateUI();
+
+            // 즉시 파일 저장 (Auto Save)
+            GameManager.Instance.SaveGameToJson(playerStats, playerPotion);
             Debug.Log($"{type} 강화 완료 (-{cost})");
         }
         else
