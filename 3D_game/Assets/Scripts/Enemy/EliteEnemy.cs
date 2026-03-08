@@ -29,6 +29,8 @@ public class EliteEnemy : Enemy
     public string bossName = "Mutant Overlord"; // 보스 이름
     // 씬에 있는 UI를 직접 연결하거나, 프리팹이면 Find로 찾음
     public BossEgoBar bossEgoBar;
+    [Header("--- Door ---")]
+    public FloorTeleporter doorScript;
 
     // 내부 상태 변수
     private float _lastFireBreathTime; 
@@ -306,7 +308,7 @@ public class EliteEnemy : Enemy
         // 죽는 순간 임팩트 (시간 느리게)
         Time.timeScale = 0.5f; 
         Invoke("ResetTimeScale", 0.5f); // 0.5초(실제시간 1초) 뒤 복구
-
+        doorScript.isLocked = false;
         base.OnDie(); // 부모의 사망 처리 실행
     }
 

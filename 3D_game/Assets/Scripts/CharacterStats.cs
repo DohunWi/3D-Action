@@ -75,7 +75,7 @@ public class CharacterStats : MonoBehaviour, IDamageable
         else
         {
             // 강인도 버팀 -> Enemy에게 "너 맞긴 했는데 참아!" 라고 알림
-            OnTakeDamage?.Invoke();
+            // OnTakeDamage?.Invoke();
         }
         // ====================================================
 

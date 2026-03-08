@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections;
+using System.Collections.Generic;
 
 // 플레이어 상태 정의
 public enum PlayerState
@@ -346,6 +347,7 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateLocomotion()
     {
+        if (_controller == null || !_controller.enabled) return;
         // 락온 상태인지 확인 (LockOnSystem이 있고, 타겟도 있어야 함)
         bool isStrafing = IsLockOn && LockOnTarget != null;
 
@@ -642,16 +644,16 @@ public class PlayerController : MonoBehaviour
             activeSkill.impulseDefinition.CreateEvent(transform.position, Vector3.down);
         }
         // 4. 범위 공격 판정 (데이터의 반경 사용)
+        // GetComponentInParent로 부모까지 탐색 → 보스 hurtbox처럼 자식 콜라이더도 인식
+        // HashSet으로 같은 대상 중복 피격 방지
         Collider[] hitColliders = Physics.OverlapSphere(transform.position, activeSkill.impactRadius);
+        var alreadyHit = new HashSet<CharacterStats>();
         foreach (var hit in hitColliders)
         {
-            if (hit.CompareTag("Enemy"))
+            var enemyStats = hit.GetComponentInParent<CharacterStats>();
+            if (enemyStats != null && enemyStats.CompareTag("Enemy") && alreadyHit.Add(enemyStats))
             {
-                var enemyStats = hit.GetComponent<CharacterStats>();
-                if (enemyStats != null)
-                {
-                    enemyStats.TakeDamage(finalDamage, activeSkill.composureDamage, transform);
-                }
+                enemyStats.TakeDamage(finalDamage, activeSkill.composureDamage, transform);
             }
         }
         
