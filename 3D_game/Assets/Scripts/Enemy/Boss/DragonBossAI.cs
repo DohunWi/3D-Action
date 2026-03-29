@@ -10,6 +10,9 @@ public enum DragonState
     GroundChase,
     GroundAttack,
     
+    // 지상 특수 행동
+    BackAway,     // 너무 가까울 때 뒤로 물러나는 애니메이션 재생 후 공격
+
     // 비행 전환 상태
     TakeOff,      // 이륙 (이동 불가, 애니메이션만 재생)
     Land,         // 착륙
@@ -58,6 +61,10 @@ public class DragonBossAI : MonoBehaviour
     [Header("--- Ground Attack Settings ---")]
     public float groundAttackCooldown = 3.0f; // 공격 사이의 대기 시간
     private float lastGroundAttackTime;       // 마지막 지상 공격이 끝난 시점
+    public float walkSpeed = 4.0f;            // 쿨타임 중 걷기 속도 (blend tree walk 기준값)
+    public float runSpeed = 8.0f;             // 공격 접근 / 원거리 추격 속도 (blend tree run 기준값)
+    private float _walkSpeed;                 // 런타임 walkSpeed (2페이즈 배율 반영)
+    private float _runSpeed;                  // 런타임 runSpeed  (2페이즈 배율 반영)
 
     [Header("--- Body Dive Attack Settings ---")]
     private float glideSpeed ;      // 돌진 속도
@@ -82,9 +89,11 @@ public class DragonBossAI : MonoBehaviour
     public float breathCooldown = 15.0f;
     private float lastBreathTime;
     [Header("--- Combat Ranges ---")]
+    public float tooCloseRange = 3.5f;   // 이 거리 이하면 뒤로 물러남 (물기 모션 허공 방지)
     public float biteRange = 4.0f;       // 깨물기 사거리 (초근접)
     public float clawRange = 8.0f;       // 돌진 할퀴기 사거리 (조금 떨어졌을 때)
     public float breathRange = 12.0f;    // 지상 브레스 사거리 (중거리)
+    public float idleRange = 5.0f;       // 쿨타임 중 유지할 거리 (낮을수록 플레이어에게 붙음)
 
     [Header("--- Fire Breath Visuals ---")]
     public GameObject fireBreathVFX; // 불 이펙트 (입 앞)
@@ -101,9 +110,24 @@ public class DragonBossAI : MonoBehaviour
     private int currentAttackIndex = 0;
     private bool isBossFightStarted = false;
 
+    // --- 콤보 시스템 ---
+    private const int COMBO_BACKAWAY = -1;    // 콤보 큐에서 BackAway를 나타내는 마커
+    private Queue<int> _comboQueue = new Queue<int>();
+    private bool _isInCombo = false;
+    private bool _backAwayIsRecovery = false; // true면 공격 없이 GroundChase로 복귀 (거리 확보용)
+
+    // --- 공격별 후딜 (Recovery) ---
+    [Header("--- Per-Attack Recovery ---")]
+    public float biteRecovery = 1.5f;         // 물기: 빠른 회복
+    public float clawRecovery = 2.5f;         // 할퀴기: 중간
+    public float breathRecovery = 4.0f;       // 브레스: 긴 회복 (플레이어 징벌 기회)
+    public float comboEndRecovery = 1.0f;     // 콤보 마지막 타에 추가되는 쿨타임
+    private float _currentCooldown;
+
     // 1. 애니메이션 파라미터 해시값 (성능 최적화)
     private static readonly int AnimID_Speed = Animator.StringToHash("speed");
     private static readonly int AnimID_FlySpeed = Animator.StringToHash("flySpeed");
+    private static readonly int AnimID_DoBackAway = Animator.StringToHash("doBackAway");
     private void Awake()
     {
         if (_agent == null) _agent = GetComponent<NavMeshAgent>();
@@ -132,6 +156,10 @@ public class DragonBossAI : MonoBehaviour
 
         lastBreathTime = -breathCooldown;
         lastFlightTime = Time.time; // 초기화
+        _currentCooldown = groundAttackCooldown; // 첫 공격은 기본 쿨타임 사용
+        _walkSpeed = walkSpeed;
+        _runSpeed  = runSpeed;
+        _agent.speed = _runSpeed;
     }
 
     private void Update()
@@ -144,6 +172,9 @@ public class DragonBossAI : MonoBehaviour
         {
             case DragonState.GroundIdle:
                 CheckStartCombat();
+                break;
+            case DragonState.BackAway:
+                UpdateBackAway();
                 break;
             case DragonState.GroundChase:
                 UpdateGroundChase();
@@ -191,10 +222,16 @@ public class DragonBossAI : MonoBehaviour
                 _agent.isStopped = false;
                 break;
 
-            case DragonState.GroundAttack:
-                _agent.isStopped = true;
+            case DragonState.BackAway:
+                _agent.enabled = false;
                 _animator.SetFloat(AnimID_Speed, 0f);
-                // 애니메이션 파라미터 전달 
+                _animator.SetTrigger(AnimID_DoBackAway);
+                break;
+
+            case DragonState.GroundAttack:
+                if (_agent.enabled) _agent.isStopped = true;
+                _animator.SetFloat(AnimID_Speed, 0f);
+                // 애니메이션 파라미터 전달
                 _animator.SetInteger("attackIndex", currentAttackIndex);
                 _animator.SetTrigger("doAttack");
                 break;
@@ -253,6 +290,9 @@ public class DragonBossAI : MonoBehaviour
                 break;
 
             case DragonState.Groggy:
+                _comboQueue.Clear();
+                _isInCombo = false;
+                _backAwayIsRecovery = false;
                 _agent.enabled = false;
                 fireBreathVFX.SetActive(false);
                 // 만약 비행 중에 그로기가 걸렸다면 바닥으로 추락
@@ -308,8 +348,15 @@ public class DragonBossAI : MonoBehaviour
             return;
         }
 
-        // 2. 공격 판단 조건 (쿨타임 및 사거리 확인)
-        bool isAttackAvailable = Time.time >= lastGroundAttackTime + groundAttackCooldown;
+        // 2. 너무 가까우면 BackAway 상태로 전환 — 애니메이션으로 물러난 뒤 물기 공격
+        if (dist < tooCloseRange)
+        {
+            ChangeState(DragonState.BackAway);
+            return;
+        }
+
+        // 3. 공격 판단 조건 (쿨타임 및 사거리 확인)
+        bool isAttackAvailable = Time.time >= lastGroundAttackTime + _currentCooldown;
 
         if (isAttackAvailable && dist <= breathRange)
         {
@@ -320,62 +367,164 @@ public class DragonBossAI : MonoBehaviour
             }
         }
 
-        // 3. 거리 유지 및 추적 로직 (겹침 방지 핵심)
-        // 공격이 불가능한 쿨타임 중에는 더 멀리서 멈추도록 설정 (예: 7m)
-        float dynamicStoppingDist = isAttackAvailable ? biteRange - 1.0f : 7.0f;
-        _agent.stoppingDistance = dynamicStoppingDist;
-
-        if (dist <= _agent.stoppingDistance + 0.5f)
+        // 4. 이동 로직 분기: 쿨타임 중 천천히 스토킹 / 쿨타임 끝나면 빠르게 돌진
+        if (!isAttackAvailable)
         {
-            // 목적지에 거의 도달했다면 에이전트를 멈추고 제자리 회전
-            _agent.isStopped = true;
-            _animator.SetFloat(AnimID_Speed, 0f, 0.2f, Time.deltaTime);
-            LookAtTarget(6.0f); // 제자리에서 플레이어를 부드럽게 주시
+            // 쿨타임 중 이동 — 멀리 있으면 run으로 추격, idleRange 근처면 walk로 스토킹
+            _agent.stoppingDistance = idleRange;
+
+            if (dist > idleRange + 0.5f)
+            {
+                // breathRange 이상 멀어지면 run으로 추격, 그 이하면 walk 스토킹
+                _agent.speed = dist > breathRange ? _runSpeed : _walkSpeed;
+                _agent.isStopped = false;
+                _agent.SetDestination(_target.position);
+            }
+            else
+            {
+                _agent.speed = _walkSpeed;
+                _agent.isStopped = true;
+            }
+            _animator.SetFloat(AnimID_Speed, _agent.desiredVelocity.magnitude, 0.15f, Time.deltaTime);
+            LookAtTarget(3.0f);
         }
         else
         {
-            // 아직 멀다면 추격 진행
-            _agent.isStopped = false;
-            _agent.SetDestination(_target.position);
-            _animator.SetFloat(AnimID_Speed, _agent.desiredVelocity.magnitude, 0.1f, Time.deltaTime);
+            // 공격 가능 — 달리기 속도로 빠르게 접근
+            _agent.speed = _runSpeed;
+            _agent.stoppingDistance = biteRange - 1.0f;
+
+            if (dist <= _agent.stoppingDistance + 0.5f)
+            {
+                _agent.isStopped = true;
+                _animator.SetFloat(AnimID_Speed, 0f, 0.2f, Time.deltaTime);
+                LookAtTarget(6.0f);
+            }
+            else
+            {
+                _agent.isStopped = false;
+                _agent.SetDestination(_target.position);
+                _animator.SetFloat(AnimID_Speed, _agent.desiredVelocity.magnitude, 0.1f, Time.deltaTime);
+            }
         }
     }
 
-    // 지상 공격 패턴
+    // 뒤로 물러나기 — 코드로 이동
+    private void UpdateBackAway()
+    {
+        LookAtTarget(3.0f);
+        // 코드로 직접 드래곤의 중심축을 뒤로 밀어냄
+        transform.Translate(Vector3.back * 10.0f * Time.deltaTime, Space.Self);
+    }
+
+    // --- 지상 공격 패턴 선택 (가중치 랜덤 + 콤보) ---
     private bool TrySelectGroundPattern(float dist)
     {
-        // 0. 지상 공격 통합 쿨타임 체크
-        if (Time.time < lastGroundAttackTime + groundAttackCooldown) return false;
+        if (Time.time < lastGroundAttackTime + _currentCooldown) return false;
 
-        // 1. 중거리 (Claw Range ~ Breath Range)
-        if (dist > clawRange && dist <= breathRange)
-        {
-            // 브레스 쿨타임이 돌았다면 지상 브레스 뿜기
-            if (Time.time >= lastBreathTime + breathCooldown)
-            {
-                currentAttackIndex = 2; // Flame Attack
-                lastBreathTime = Time.time; // 쿨타임 리셋
-                return true;
-            }
-            return false; // 브레스 쿨이면 더 다가가기 위해 false 반환
-        }
+        _comboQueue.Clear();
+        _isInCombo = false;
 
-        // 2. 약간 떨어짐 (Bite Range ~ Claw Range)
-        if (dist > biteRange && dist <= clawRange)
-        {
-            // 돌진 할퀴기로 거리 좁히면서 공격
-            currentAttackIndex = 1; // Claw Attack
-            return true;
-        }
+        bool breathReady = Time.time >= lastBreathTime + breathCooldown;
+        float roll = Random.value;
+        bool doCombo = Random.value < (isPhaseTwo ? 0.55f : 0.3f);
 
-        // 3. 초근접 (0 ~ Bite Range)
+        // --- 초근접 (≤ biteRange) ---
         if (dist <= biteRange)
         {
-            currentAttackIndex = 0;
-            return true;
+            if (doCombo)
+            {
+                if (isPhaseTwo && roll < 0.25f)
+                {
+                    // 2페이즈 풀콤보: 물기 → 물기 → BackAway → 브레스
+                    if (breathReady)
+                    {
+                        enqueueCombo(0, 0, COMBO_BACKAWAY, 2);
+                        lastBreathTime = Time.time;
+                    }
+                    else
+                        enqueueCombo(0, 0, 1);           // 브레스 쿨이면 3연타
+                }
+                else if (breathReady && roll < 0.45f)
+                {
+                    enqueueCombo(0, COMBO_BACKAWAY, 2);   // 물기 → BackAway → 브레스
+                    lastBreathTime = Time.time;
+                }
+                else if (roll < 0.7f)
+                    enqueueCombo(0, 0);                   // 물기 → 물기
+                else
+                    enqueueCombo(0, 1);                   // 물기 → 할퀴기 (돌진 복귀)
+            }
+            else
+            {
+                currentAttackIndex = roll < 0.75f ? 0 : 1;
+            }
+        }
+        // --- 중거리 (biteRange ~ clawRange): 할퀴기 주력 ---
+        else if (dist <= clawRange)
+        {
+            if (doCombo)
+            {
+                if (breathReady && roll < 0.35f)
+                {
+                    enqueueCombo(1, 2);                   // 할퀴기 → 브레스 (돌진 복귀 후 화염)
+                    lastBreathTime = Time.time;
+                }
+                else
+                    enqueueCombo(1, 1);                   // 할퀴기 → 할퀴기 (연속 돌진)
+            }
+            else
+            {
+                if (breathReady && roll < 0.25f)
+                {
+                    currentAttackIndex = 2;
+                    lastBreathTime = Time.time;
+                }
+                else
+                    currentAttackIndex = 1;
+            }
+        }
+        // --- 원거리 (clawRange ~ breathRange) ---
+        else if (dist <= breathRange)
+        {
+            if (breathReady)
+            {
+                currentAttackIndex = 2;
+                lastBreathTime = Time.time;
+            }
+            else
+                currentAttackIndex = 1;               // 브레스 쿨이면 할퀴기로 접근
+        }
+        else
+        {
+            return false;
         }
 
-        return false;
+        // 콤보 큐가 채워졌으면 첫 번째 공격 꺼내기
+        if (_comboQueue.Count > 0)
+        {
+            currentAttackIndex = _comboQueue.Dequeue();
+            _isInCombo = true;
+        }
+
+        return true;
+    }
+
+    private void enqueueCombo(params int[] attacks)
+    {
+        foreach (int a in attacks)
+            _comboQueue.Enqueue(a);
+    }
+
+    private float getAttackCooldown(int attackIdx)
+    {
+        switch (attackIdx)
+        {
+            case 0:  return biteRecovery;
+            case 1:  return clawRecovery;
+            case 2:  return breathRecovery;
+            default: return groundAttackCooldown;
+        }
     }
 
     // ==========================================================
@@ -480,11 +629,91 @@ public class DragonBossAI : MonoBehaviour
     // 애니메이션 이벤트 수신 (Animation Events)
     // ==========================================================
     
-    // 지상 공격 끝
+    // BackAway 애니메이션 끝 — 회복용 / 콤보용 / 단독 분기
+    public void OnBackAwayEnd()
+    {
+        // 공격 후 거리 확보용 BackAway → 공격 없이 GroundChase (브레스 → BackAway → 브레스 루프 차단)
+        if (_backAwayIsRecovery)
+        {
+            _backAwayIsRecovery = false;
+            ChangeState(DragonState.GroundChase);
+            return;
+        }
+
+        // 콤보 큐에 다음 공격이 예약되어 있으면 그대로 실행
+        if (_comboQueue.Count > 0)
+        {
+            currentAttackIndex = _comboQueue.Dequeue();
+            ChangeState(DragonState.GroundAttack);
+            return;
+        }
+
+        // 단독 BackAway — 랜덤 후속 공격 선택
+        float roll = Random.value;
+        bool breathReady = Time.time >= lastBreathTime + breathCooldown;
+
+        if (breathReady && roll < 0.15f)
+        {
+            currentAttackIndex = 2; // 브레스 (15%, 거리 벌린 뒤 화염)
+            lastBreathTime = Time.time;
+        }
+        else if (roll < 0.75f)
+            currentAttackIndex = 0; // 물기 (기본)
+        else
+            currentAttackIndex = 1; // 할퀴기 (돌진 복귀)
+
+        ChangeState(DragonState.GroundAttack);
+    }
+
+    // 지상 공격 끝 — 콤보 연속 실행 or 쿨타임 차등 적용
     public void OnGroundAttackEnd()
     {
-        ChangeState(DragonState.GroundChase);
+        // BackAway 후 공격이었다면 에이전트 복구
+        if (!_agent.enabled)
+        {
+            if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 2.0f, NavMesh.AllAreas))
+            {
+                _agent.enabled = true;
+                _agent.Warp(hit.position);
+            }
+        }
+
+        // 콤보 다음 타가 남아있으면 즉시 실행
+        if (_comboQueue.Count > 0)
+        {
+            int next = _comboQueue.Dequeue();
+
+            // BackAway 마커면 상태 전환
+            if (next == COMBO_BACKAWAY)
+            {
+                ChangeState(DragonState.BackAway);
+                return;
+            }
+
+            // 일반 공격이면 애니메이션만 재트리거 (이미 GroundAttack 상태)
+            currentAttackIndex = next;
+            _animator.SetInteger("attackIndex", currentAttackIndex);
+            _animator.SetTrigger("doAttack");
+            return;
+        }
+
+        // 콤보 or 단일 공격 종료 — 쿨타임 차등 적용
+        _currentCooldown = getAttackCooldown(currentAttackIndex);
+        if (_isInCombo) _currentCooldown += comboEndRecovery;
+        _isInCombo = false;
+
         lastGroundAttackTime = Time.time;
+
+        // 확률적 회복 BackAway — 가까울 때만 발동 (뒤로 빠지며 거리 확보 후 walk→run 루프 유도)
+        float distToPlayer = _target != null ? Vector3.Distance(transform.position, _target.position) : float.MaxValue;
+        if (distToPlayer < clawRange && Random.value < 0.45f)
+        {
+            _backAwayIsRecovery = true;
+            ChangeState(DragonState.BackAway);
+            return;
+        }
+
+        ChangeState(DragonState.GroundChase);
     }
 
     // 이륙 애니메이션이 공중 궤도에 진입했을 때 호출
@@ -565,8 +794,10 @@ public class DragonBossAI : MonoBehaviour
             _animator.SetTrigger("doScream");
             lastFlightTime = Time.time - flightCooldown;
             
-            // 공격/이동 속도 강화 등 추가 가능
-            _agent.speed *= 1.2f; 
+            // 공격/이동 속도 강화
+            _walkSpeed *= 1.2f;
+            _runSpeed  *= 1.2f;
+            _agent.speed = _runSpeed;
         }
     }
     // ==========================================================
@@ -629,6 +860,26 @@ public class DragonBossAI : MonoBehaviour
         Instantiate(spikePrefab, spawnPos, Quaternion.identity)
             .GetComponent<NightmareSpike>()?.Setup(hurtboxes[1]);
     }
+    
+    private void OnAnimatorMove()
+    {
+        // 특수 처리: BackAway 상태일 때는 루트 모션 연산을 아예 무시함
+        if (currentState == DragonState.BackAway) return;
+
+        // BackAway 후 공격(에이전트 비활성) 중에는 위치 잠금
+        bool lockPosition = currentState == DragonState.GroundAttack && !_agent.enabled;
+
+        if (lockPosition)
+        {
+            transform.rotation *= _animator.deltaRotation;
+        }
+        else
+        {
+            transform.position += _animator.deltaPosition;
+            transform.rotation *= _animator.deltaRotation;
+        }
+    }
+
     private void LookAtTarget(float speed)
     {
         Vector3 dir = (_target.position - transform.position).normalized;
@@ -642,6 +893,9 @@ public class DragonBossAI : MonoBehaviour
 
     private void OnDie()
     {
+        _comboQueue.Clear();
+        _isInCombo = false;
+        _backAwayIsRecovery = false;
         ChangeState(DragonState.Die);
         _agent.enabled = false;
         _animator.SetTrigger("doDie");

@@ -28,6 +28,18 @@ public class Weapon : MonoBehaviour
         // 시작할 땐 판정을 꺼둡니다.
         DisableHitbox();
     }
+
+    private void Start()
+    {
+        // 자신의 WeaponData에 등록된 VFX를 씬 로드 시 미리 풀에 채워둠
+        if (weaponData == null || VFXPoolManager.Instance == null) return;
+
+        if (weaponData.impactVFX != null)
+            VFXPoolManager.Instance.WarmUp(weaponData.impactVFX, 3);
+
+        if (weaponData.hitVFX != null)
+            VFXPoolManager.Instance.WarmUp(weaponData.hitVFX, 3);
+    }
     public virtual float damage 
     {
         get { return (weaponData != null ? weaponData.damage : 0f) * damageMultiplier; }
@@ -77,7 +89,7 @@ public class Weapon : MonoBehaviour
                 SoundManager.Instance.PlaySFX(weaponData.swingSound, transform.position);
             }
             if (weaponData.impactVFX != null)
-                Instantiate(weaponData.impactVFX, transform.position + transform.forward, Quaternion.identity);
+                VFXPoolManager.Instance.PlayVFX(weaponData.impactVFX, transform.position + transform.forward, Quaternion.identity);
   
             // 
             // Debug.Log($"[Weapon] 히트박스 켜짐! (GameObj: {gameObject.name})"); 
