@@ -8,6 +8,9 @@ public class NightmareSpike : MonoBehaviour, IDamageable
     public float damage = 100f;
     public float composureDamage = 150f; // 공중 격추를 위해 높은 강인도 데미지 설정
 
+    [Header("--- SFX ---")]
+    public AudioClip impactClip; // 보스에 박힐 때 효과음
+
     public BossHurtbox targetHurtbox;
     private bool _isLaunched = false;
     private bool _isReady = false;
@@ -64,8 +67,8 @@ public class NightmareSpike : MonoBehaviour, IDamageable
     {
         if (targetHurtbox != null)
         {
-            // 인터페이스를 통해 해당 부위에 직접 데미지 전달
             targetHurtbox.TakeDamage(damage, composureDamage, null);
+            SoundManager.Instance?.PlaySFX(impactClip, transform.position);
         }
         Destroy(gameObject);
     }

@@ -8,8 +8,12 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
+    [Header("BGM")]
+    public AudioClip fieldBGM;
+    public float bgmFadeDuration = 2.0f;
+
     [Header("Prefabs")]
-    public GameObject lostMemoryPrefab; 
+    public GameObject lostMemoryPrefab;
 
     [Header("Lost Memory Data (RAM Only)")]
     // 유실물은 굳이 파일 저장 안 하고 램에만 둬도 됨 (게임 끄면 사라지는 게 보통)
@@ -76,6 +80,8 @@ public class GameManager : MonoBehaviour
         // 맨 처음 게임을 켰을 때(이미 씬에 있는 상태)는 발동 안 함.
         // 그래서 Start에서 수동으로 한 번 적용해줘야 함.
 
+        SoundManager.Instance?.PlayFieldBGM(fieldBGM, bgmFadeDuration);
+
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
@@ -100,6 +106,8 @@ public class GameManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        SoundManager.Instance?.PlayFieldBGM(fieldBGM, bgmFadeDuration);
+
         // 1. 유실물이 있고, 죽었던 그 맵에 돌아왔다면 생성
         if (hasLostMemory && scene.name == lostSceneName)
         {

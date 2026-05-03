@@ -9,26 +9,72 @@ public class GameFeelManager : MonoBehaviour
     public static GameFeelManager Instance;
 
     [Header("Components")]
-    public Volume globalVolume; 
-    public CinemachineBrain cinemachineBrain; // ★ 카메라 대신 브레인을 연결!
+    public Volume globalVolume;
+    public CinemachineBrain cinemachineBrain;
+
+    [Header("Camera Shake")]
+    // Virtual Camera GameObject에 붙인 CinemachineImpulseSource를 여기에 연결
+    public CinemachineImpulseSource impulseSource;
 
     private ChromaticAberration _chromaticAberration;
     private LensDistortion _lensDistortion;
-    private float _defaultFOV = 40f; // 기본값 (못 찾을 경우 대비)
+    private float _defaultFOV = 40f;
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
-        
+
         if (globalVolume != null && globalVolume.profile != null)
         {
             globalVolume.profile.TryGet(out _chromaticAberration);
             globalVolume.profile.TryGet(out _lensDistortion);
         }
 
-        // 브레인 자동 찾기
         if (cinemachineBrain == null)
             cinemachineBrain = Camera.main.GetComponent<CinemachineBrain>();
+    }
+
+    // force: 흔들림 세기 / direction: ImpulseSource DefaultVelocity 방향 배율
+    public void ShakeCamera(float force, Vector3 direction)
+    {
+        if (impulseSource == null) return;
+        impulseSource.GenerateImpulse(direction.normalized * force);
+    }
+
+    // 브레스처럼 지속되는 잔흔들림 — 시작/중지 쌍으로 사용
+    private Coroutine _loopShakeCoroutine;
+
+    public void StartLoopShake(float force = 0.3f, float interval = 0.12f)
+    {
+        StopLoopShake();
+        _loopShakeCoroutine = StartCoroutine(LoopShakeRoutine(force, interval));
+    }
+
+    public void StopLoopShake()
+    {
+        if (_loopShakeCoroutine != null)
+        {
+            StopCoroutine(_loopShakeCoroutine);
+            _loopShakeCoroutine = null;
+        }
+    }
+
+    private IEnumerator LoopShakeRoutine(float force, float interval)
+    {
+        while (true)
+        {
+            if (impulseSource != null)
+            {
+                // 매번 방향을 랜덤하게 줘서 부르르 떨리는 느낌
+                Vector3 randomDir = new Vector3(
+                    Random.Range(-1f, 1f),
+                    Random.Range(-0.3f, 0.3f),
+                    Random.Range(-1f, 1f)
+                );
+                impulseSource.GenerateImpulse(randomDir.normalized * force);
+            }
+            yield return new WaitForSeconds(interval);
+        }
     }
 
     public void DoParryEffect()

@@ -130,6 +130,7 @@ MonoBehaviour:
   launchSpeed: 30
   damage: 100
   composureDamage: 100
+  impactClip: {fileID: 8300000, guid: 8de9704d19d864fffbc5c21846c5b391, type: 3}
   targetHurtbox: {fileID: 0}
 --- !u!65 &133388202538299564
 BoxCollider:

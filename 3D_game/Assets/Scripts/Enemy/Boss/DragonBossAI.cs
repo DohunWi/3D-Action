@@ -84,6 +84,14 @@ public class DragonBossAI : MonoBehaviour
     [Header("--- Hurtbox References ---")]
     public List<BossHurtbox> hurtboxes = new List<BossHurtbox>();
 
+    [Header("--- SFX ---")]
+    public DragonBossSFX sfx;
+
+    [Header("--- BGM ---")]
+    public AudioClip phase1BGM;
+    public AudioClip phase2BGM;
+    public float bgmFadeDuration = 2.0f;
+
     [Header("--- Combat Settings ---")]
     public float groundAttackRange = 5.0f;
     public float breathCooldown = 15.0f;
@@ -133,6 +141,7 @@ public class DragonBossAI : MonoBehaviour
         if (_agent == null) _agent = GetComponent<NavMeshAgent>();
         if (_animator == null) _animator = GetComponent<Animator>();
         if (_stats == null) _stats = GetComponent<CharacterStats>();
+        if (sfx == null) sfx = GetComponent<DragonBossSFX>();
     }
 
     private void Start()
@@ -242,10 +251,12 @@ public class DragonBossAI : MonoBehaviour
                 _agent.enabled = false;
                 _animator.SetFloat(AnimID_Speed, 0f);
                 _animator.SetTrigger("doTakeOff");
+                sfx?.OnTakeOff();
                 break;
 
             case DragonState.FlyHover:
                 _animator.SetBool("isFlying", true);
+                sfx?.StartWingFlapLoop();
                 break;
 
             case DragonState.FlyAttack:
@@ -287,6 +298,7 @@ public class DragonBossAI : MonoBehaviour
                 isFlying = false;
                 _animator.SetBool("isFlying", false);
                 _animator.SetTrigger("doLand");
+                sfx?.StopWingFlapLoop();
                 break;
 
             case DragonState.Groggy:
@@ -304,11 +316,13 @@ public class DragonBossAI : MonoBehaviour
                     // 바닥 충돌 시 연출
                     _animator.SetTrigger("doLandGroggy"); // 바닥에 처박히는 전용 애니메이션
                     _animator.SetBool("isFlying", false);
+                    sfx?.StopWingFlapLoop();
                     StartCoroutine(FallToGround());
                 }
                 else
                 {
                     _animator.SetTrigger("doGroggy");
+                    sfx?.OnGroggy();
                     // 지상 그로기일 경우 단순히 일정 시간 후 회복
                     StartCoroutine(RecoverFromGroggy());
                 }
@@ -329,6 +343,8 @@ public class DragonBossAI : MonoBehaviour
             
             // 전투 시작 시 포효 연출 후 추격
             _animator.SetTrigger("doScream");
+            sfx?.OnRoar();
+            SoundManager.Instance?.PlayBGM(phase1BGM, bgmFadeDuration);
             Invoke(nameof(StartChase), 3.0f);
         }
     }
@@ -744,6 +760,7 @@ public class DragonBossAI : MonoBehaviour
     // 착륙 애니메이션이 끝나고 발이 땅에 닿았을 때 호출
     public void OnLandEnd()
     {
+        sfx?.OnLand();
         // 1. 루트 모션 다시 켜기 (지상 애니메이션 이동 복구)
         _animator.applyRootMotion = true;
         // 착륙 완료 시점부터 다시 지상 쿨타임 계산 시작
@@ -766,15 +783,17 @@ public class DragonBossAI : MonoBehaviour
         if (fireBreathVFX != null)
         {
             fireBreathVFX.SetActive(true);
-            // 오디오도 여기서 재생하면 입 벌릴 때 딱 소리 남
-            // audioSource.PlayOneShot(fireSound);
+            sfx?.OnBreathStart();
+            GameFeelManager.Instance?.StartLoopShake(0.25f, 0.1f);
         }
     }
     public void EndFireBreathVFX()
     {
-        if (fireBreathVFX != null) 
+        if (fireBreathVFX != null)
         {
             fireBreathVFX.SetActive(false);
+            sfx?.OnBreathEnd();
+            GameFeelManager.Instance?.StopLoopShake();
         }
     }
     // ==========================================================
@@ -791,7 +810,14 @@ public class DragonBossAI : MonoBehaviour
             Debug.Log("🐉 드래곤 2페이즈 돌입! 비행 패턴 개방!");
 
             // 2페이즈 돌입 즉시 포효 후, GroundChase로 돌아오면 바로 이륙하도록 쿨타임 만료 처리
+            // 브레스 도중 페이즈 전환 시 VFX/SFX/Shake 강제 정리
+            fireBreathVFX?.SetActive(false);
+            sfx?.OnBreathEnd();
+            GameFeelManager.Instance?.StopLoopShake();
+
             _animator.SetTrigger("doScream");
+            sfx?.OnRoar();
+            SoundManager.Instance?.CrossFadeBGM(phase2BGM, bgmFadeDuration);
             lastFlightTime = Time.time - flightCooldown;
             
             // 공격/이동 속도 강화
@@ -836,8 +862,9 @@ public class DragonBossAI : MonoBehaviour
             }
             yield return null;
         }
-        // CameraShake.Instance.Shake(0.5f, 1.0f); // 카메라 흔들림 추가 추천
-        
+        sfx?.OnGroggyGroundImpact();
+        GameFeelManager.Instance?.ShakeCamera(3.0f, Vector3.down); // 가장 강한 충격
+
         yield return RecoverFromGroggy();
     }
     // ==========================================================
@@ -859,6 +886,7 @@ public class DragonBossAI : MonoBehaviour
         Vector3 spawnPos = groundHit.point + Vector3.up * spikeYOffset;
         Instantiate(spikePrefab, spawnPos, Quaternion.identity)
             .GetComponent<NightmareSpike>()?.Setup(hurtboxes[1]);
+        sfx?.OnSpikeSpawn();
     }
     
     private void OnAnimatorMove()
@@ -899,12 +927,61 @@ public class DragonBossAI : MonoBehaviour
         ChangeState(DragonState.Die);
         _agent.enabled = false;
         _animator.SetTrigger("doDie");
+        sfx?.StopWingFlapLoop();
+        sfx?.OnDeath();
+        SoundManager.Instance?.RestoreFieldBGM(bgmFadeDuration);
         if (bossEgoBar != null) bossEgoBar.Hide();
         // 사망 연출, GameManager 이벤트 등 추가
     }
 
     // ====================================
-    // 애니메이션 이벤트 - 히트박스 
+    // 애니메이션 이벤트 - SFX + Camera Shake 통합
+    // ====================================
+    public void OnClawSwing()
+    {
+        sfx?.OnClawSwing();
+        GameFeelManager.Instance?.ShakeCamera(0.4f, Vector3.right);
+    }
+
+    public void OnClawImpact()
+    {
+        sfx?.OnClawImpact();
+        GameFeelManager.Instance?.ShakeCamera(1.2f, Vector3.down);
+    }
+
+    public void OnGlideDive()
+    {
+        sfx?.OnGlideDive();
+        GameFeelManager.Instance?.ShakeCamera(0.5f, Vector3.forward);
+    }
+
+    public void OnGlideImpact()
+    {
+        GameFeelManager.Instance?.ShakeCamera(2.0f, Vector3.down);
+    }
+
+    public void OnLandShake()
+    {
+        GameFeelManager.Instance?.ShakeCamera(1.5f, Vector3.down);
+    }
+
+    public void OnRoarShakeStart()
+    {
+        GameFeelManager.Instance?.StartLoopShake(0.4f, 0.08f);
+    }
+
+    public void OnRoarShakeEnd()
+    {
+        GameFeelManager.Instance?.StopLoopShake();
+    }
+
+    public void OnBackAwayShake()
+    {
+        GameFeelManager.Instance?.ShakeCamera(0.8f, Vector3.back);
+    }
+
+    // ====================================
+    // 애니메이션 이벤트 - 히트박스
     // ====================================
     public void EnableBite() => biteWeapon?.EnableHitbox();
     public void DisableBite() => biteWeapon?.DisableHitbox();
