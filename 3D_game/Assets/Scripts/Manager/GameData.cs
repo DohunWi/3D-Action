@@ -8,12 +8,12 @@ public class GameData
     public int currentExp;
     public int memory; // 
 
-    // [성장 스탯 - 세계관 용어]
-    public int sanity;     // Vigor
-    public int awareness;  // Mind
-    public int tenacity;   // Endurance
-    public int conviction; // Strength
-    public int insight;    // Dexterity
+    // [성장 스탯 - SO 기본값 대비 추가된 성장치만 저장]
+    public int sanityGrowth;
+    public int awarenessGrowth;
+    public int tenacityGrowth;
+    public int convictionGrowth;
+    public int insightGrowth;
 
     // [위치 정보]
     public string sceneName;

@@ -13,40 +13,37 @@ public enum StatType
 }
 public class PlayerStats : CharacterStats
 {
+    [Header("--- Base Stats (ScriptableObject) ---")]
+    public PlayerBaseStatsSO baseStats;
+
     [Header("--- Player Growth Stats ---")]
     public int level = 1;
-    public int sanity = 10;      
-    public int awareness = 10;       
-    public int tenacity = 10;  
-    public int conviction = 10;   
-    public int insight = 10;
+    public int sanity;
+    public int awareness;
+    public int tenacity;
+    public int conviction;
+    public int insight;
 
     [Header("Experience System")]
-    public int currentExp = 0;     // 현재 경험치
-    public int maxExp = 100;       // 레벨업에 필요한 경험치
+    public int currentExp = 0;
+    public int maxExp = 100;
 
     [Header("--- Calculated Combat Stats ---")]
-    public float attackPower; // 최종 공격력 (무기 데미지 + 스탯 보정)
+    public float attackPower;
 
     [Header("Player Specific")]
-    public PlayerController _playerController; // 상태 확인용 연결
+    public PlayerController _playerController;
     public PlayerPotion _playerPotion;
-    public float parryAngle = 90f; // 전방 90도 안에서 온 공격만 막기
+    public float parryAngle = 90f;
 
-    [Header("Volition Settings")] // Volition(Stamina) 설정
-    public float maxVolition = 100f;
-    public float currentVolition { get; private set; } // 읽기 전용 프로퍼티
-    public float volitionRegenRate = 15f;   // 초당 회복량
-    public float volitionRegenDelay = 2.0f; // 스태미나 쓴 후 회복 시작까지 딜레이
-    private float _lastVolitionUseTime; // 마지막 사용 시간 기록용
+    [Header("Volition Settings")]
+    public float maxVolition;
+    public float currentVolition { get; private set; }
+    private float _lastVolitionUseTime;
 
-    [Header("Lucidity Settings")] // Lucidity (Mana) 설정
-    public float maxLucidity = 100f;
+    [Header("Lucidity Settings")]
+    public float maxLucidity;
     public float currentLucidity { get; private set; }
-    public float lucidityRegenRate = 5f; // 초당 5 회복 (스태미나보다 느리게)
-    [Header("Movement Settings")]
-    public float baseMoveSpeed = 4.5f; // 기본 이동 속도 
-    public float baseSprintSpeed = 9.5f; // 기본 이동 속도 
 
     // ★ UI에게 보낼 신호들 (현재값, 최대값)
     public event Action<float, float> OnLucidityChanged;
@@ -64,73 +61,75 @@ public class PlayerStats : CharacterStats
     }
     public override void Start()
     {
-        // 1. 매니저에게 맡겨둔 내 돈과 스탯 Get
-        if (GameManager.Instance != null)
+        // SO가 없으면 경고
+        if (baseStats == null)
+            Debug.LogWarning("[PlayerStats] PlayerBaseStatsSO가 연결되지 않았습니다!");
+
+        if (GameManager.Instance != null && GameManager.Instance.isLoadedGame)
         {
+            // 세이브 파일 있을 때만 GameManager 값 적용
             PlayerWallet myWallet = GetComponent<PlayerWallet>();
             GameManager.Instance.ApplyStatsToPlayer(this, myWallet);
         }
+        else
+        {
+            // 뉴게임 or 테스트 씬 → SO 기본값 사용
+            InitFromSO();
+        }
 
-        // 1. 스탯 먼저 계산 (이게 maxHealth, maxMana 등을 설정함)
         RecalculateStats();
-
-        // 2. 부모의 Start 실행
         base.Start();
-        currentVolition = maxVolition; // 시작 시 풀 충전
+        currentVolition = maxVolition;
         currentLucidity = maxLucidity;
 
-        // 시작하자마자 UI 한번 갱신해줌 (꽉 찬 상태 보여주기)
         OnLucidityChanged?.Invoke(currentLucidity, maxLucidity);
         OnVolitionChanged?.Invoke(currentVolition, maxVolition);
     }
-    // ★ 스탯 기반 능력치 재계산 로직
+
+    // SO 기본값으로 초기화 (뉴게임 or 테스트)
+    public void InitFromSO()
+    {
+        if (baseStats == null) return;
+        sanity     = baseStats.sanity;
+        awareness  = baseStats.awareness;
+        tenacity   = baseStats.tenacity;
+        conviction = baseStats.conviction;
+        insight    = baseStats.insight;
+        maxExp     = baseStats.startingMaxExp;
+    }
     public void RecalculateStats()
     {
-        // 1. 생명력 -> 최대 체력 (부모 변수 maxHealth 수정)
+        // SO가 없으면 계산 불가
+        if (baseStats == null) return;
+
+        // 1. Ego (체력)
         float oldMaxEgo = maxEgo;
-        // 공식: 기본 50 + (생명력 * 10)
-        maxEgo = sanity * 10f; 
-
-        // 레벨업으로 체력통이 커졌으면, 커진 만큼 현재 체력도 채워줌 (공짜 회복 느낌)
+        maxEgo = sanity * baseStats.egoPerSanity;
         if (currentEgo > 0 && maxEgo > oldMaxEgo)
-        {
-            float EgoDiff = maxEgo - oldMaxEgo;
-            currentEgo += EgoDiff;
-            // 부모 이벤트 호출 (CharacterStats의 UI 갱신)
-            // base.OnHealthChanged는 public event가 아니면 직접 호출 불가할 수 있음.
-            // 하지만 CharacterStats.cs를 보니 event가 public임.
-            // 만약 event 호출이 안되면 TakeDamage(0) 같은 꼼수나 별도 함수 필요.
-            // 여기서는 CharacterStats의 OnHealthChanged가 public Action이므로 직접 호출 가능하다고 가정하거나
-            // CharacterStats에 RefreshUI() 같은 함수를 두는게 좋지만, 일단 직접 수정은 안한다고 했으므로 패스.
-        }
+            currentEgo += maxEgo - oldMaxEgo;
 
-        // 2. 정신력 -> 최대 마나
-        maxLucidity = awareness * 5f;
+        // 2. Lucidity (마나)
+        maxLucidity = awareness * baseStats.lucidityPerAwareness;
 
-        // 3. 지구력 -> 최대 스태미나
-        maxVolition = 50f + (tenacity * 3f);
+        // 3. Volition (스태미나)
+        maxVolition = baseStats.baseVolition + tenacity * baseStats.volitionPerTenacity;
 
-        // 4. 근력(Strength) -> 기본 공격력 (맨손 or 무기 보정용 기초값)
-        // 무기 데미지 계산식(CalculateTotalDamage)에서 strength를 직접 쓰므로
-        // 여기서는 attackPower를 '표기용'이나 '맨손 데미지'로만 씁니다.
-        attackPower = conviction * 1.5f;
+        // 4. 공격력
+        attackPower = conviction * baseStats.attackPerConviction;
 
-        // ★ 5. 기량(Dexterity) -> 이동 속도 변경!
+        // 5. 이동 속도
         if (_playerController != null)
         {
-            // 공식: 기본속도 + (기량 * 0.05) 
-            // 예: 기량 10 -> +0.5 증가 / 기량 50 -> +2.5 증가
-            // 너무 빨라지지 않게 소수점을 작게 잡는 것이 포인트입니다.
-            float bonusSpeed = insight * 0.05f;
-            
-            // PlayerController에 있는 변수(예: moveSpeed)를 직접 수정
-            _playerController.moveSpeed = baseMoveSpeed + bonusSpeed;
-            _playerController.sprintSpeed = baseSprintSpeed + bonusSpeed;
-            // (선택) 구르기 속도나 애니메이션 속도도 같이 올릴 수 있습니다.
-            // _playerController.rollSpeed = ...
+            float bonus = insight * baseStats.speedPerInsight;
+            _playerController.moveSpeed   = baseStats.baseMoveSpeed   + bonus;
+            _playerController.sprintSpeed = baseStats.baseSprintSpeed + bonus;
         }
 
-        // UI 갱신 (마나, 스태미나) - 체력은 위에서 처리됨
+        // 6. 강인도 (CharacterStats 값 갱신)
+        maxComposure          = baseStats.maxComposure;
+        composureRecoveryTime = baseStats.composureRecoveryTime;
+        composureRecoveryRate = baseStats.composureRecoveryRate;
+
         OnLucidityChanged?.Invoke(currentLucidity, maxLucidity);
         OnVolitionChanged?.Invoke(currentVolition, maxVolition);
         OnStatsRefreshed?.Invoke();
@@ -166,21 +165,22 @@ public class PlayerStats : CharacterStats
     {
         // 스태미나 자동 회복 로직
         // "마지막 사용 후 딜레이(2초)가 지났고" AND "스태미나가 꽉 차지 않았다면" -> 회복
-        if (Time.time > _lastVolitionUseTime + volitionRegenDelay && currentVolition < maxVolition)
+        float regenDelay = baseStats != null ? baseStats.volitionRegenDelay : 2f;
+        float regenRate  = baseStats != null ? baseStats.volitionRegenRate  : 15f;
+
+        if (Time.time > _lastVolitionUseTime + regenDelay && currentVolition < maxVolition)
         {
-            float prevStamina = currentVolition;
-            currentVolition += volitionRegenRate * Time.deltaTime;
-            currentVolition = Mathf.Min(currentVolition, maxVolition); // 최대치 초과 방지
-            // 값이 조금이라도 변했다면 UI 갱신
-            if (currentVolition != prevStamina)
+            float prev = currentVolition;
+            currentVolition = Mathf.Min(currentVolition + regenRate * Time.deltaTime, maxVolition);
+            if (currentVolition != prev)
                 OnVolitionChanged?.Invoke(currentVolition, maxVolition);
         }
-        // 마나 자동 회복 (항상 천천히 회복)
+
+        float lucidRegen = baseStats != null ? baseStats.lucidityRegenRate : 5f;
         if (currentLucidity < maxLucidity)
         {
-            currentLucidity += lucidityRegenRate * Time.deltaTime;
-            currentLucidity = Mathf.Min(currentLucidity, maxLucidity);
-            OnLucidityChanged?.Invoke(currentLucidity, maxLucidity); // UI 갱신
+            currentLucidity = Mathf.Min(currentLucidity + lucidRegen * Time.deltaTime, maxLucidity);
+            OnLucidityChanged?.Invoke(currentLucidity, maxLucidity);
         }
 
         // (테스트용) 스태미나 수치 확인

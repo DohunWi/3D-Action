@@ -52,20 +52,23 @@ public class GameManager : MonoBehaviour
             // =========================================================
             // 게임 켜지자마자 저장된 파일 읽기 (Auto Load)
             // =========================================================
-            if (newGame) // 테스트용 플래그 - 인스펙터에서 설정
+            if (newGame)
             {
-                Debug.Log("🆕 게임 시작: 저장된 파일 없음 (새 게임 상태)");
+                isLoadedGame = false;
+                ResetToNewGame();
+                Debug.Log("🆕 뉴게임: SO 기본값으로 시작");
             }
             else
             {
                 if (File.Exists(path))
                 {
-                    LoadGameFromJson(); // 여기서 JSON 데이터를 매니저 변수로 가져옴
+                    LoadGameFromJson();
                     Debug.Log("📂 게임 시작: 저장된 데이터 로드 완료");
                 }
                 else
                 {
-                    Debug.Log("🆕 게임 시작: 저장된 파일 없음 (새 게임 상태)");
+                    isLoadedGame = false;
+                    Debug.Log("🆕 게임 시작: 저장 파일 없음, SO 기본값 사용");
                 }
             }
         }
@@ -87,9 +90,11 @@ public class GameManager : MonoBehaviour
         {
             PlayerStats pStats = player.GetComponent<PlayerStats>();
             PlayerWallet pWallet = player.GetComponent<PlayerWallet>();
-            
-            // 아까 Awake에서 읽어온 데이터를 플레이어에게 주입
-            ApplyStatsToPlayer(pStats, pWallet);
+
+            // 세이브 로드 시에만 GameManager 값으로 덮어씀
+            // (뉴게임/테스트는 PlayerStats.Start()에서 InitFromSO()가 처리)
+            if (isLoadedGame)
+                ApplyStatsToPlayer(pStats, pWallet);
             
             // (선택) 에디터 테스트 편의를 위해:
             // 저장된 위치로 이동시킬지, 아니면 에디터에 배치한 위치에서 시작할지 결정
@@ -172,22 +177,28 @@ public class GameManager : MonoBehaviour
     // -----------------------------------------------------------------------
     public void ApplyStatsToPlayer(PlayerStats stats, PlayerWallet wallet)
     {
-        stats.level = level;
+        stats.level      = level;
         stats.currentExp = currentExp;
-        stats.maxExp = maxExp;
-        
-        stats.sanity = sanity;
-        stats.awareness = awareness;
-        stats.tenacity = tenacity;
-        stats.conviction = conviction;
-        stats.insight = insight;
+        stats.maxExp     = maxExp;
+
+        // PlayerStats에 연결된 SO를 단일 참조로 사용
+        var so = stats.baseStats;
+        int baseSanity     = so != null ? so.sanity     : 0;
+        int baseAwareness  = so != null ? so.awareness  : 0;
+        int baseTenacity   = so != null ? so.tenacity   : 0;
+        int baseConviction = so != null ? so.conviction : 0;
+        int baseInsight    = so != null ? so.insight    : 0;
+
+        stats.sanity     = baseSanity     + sanity;
+        stats.awareness  = baseAwareness  + awareness;
+        stats.tenacity   = baseTenacity   + tenacity;
+        stats.conviction = baseConviction + conviction;
+        stats.insight    = baseInsight    + insight;
 
         if (wallet != null)
-        {
             wallet.SetCurrentMemory(memory);
-        }
-        
-        stats.RecalculateStats(); // 적용된 스탯으로 HP/MP/SP 재계산
+
+        stats.RecalculateStats();
         Debug.Log("✅ 플레이어 스탯 동기화 완료");
     }
 
@@ -196,13 +207,19 @@ public class GameManager : MonoBehaviour
     // -----------------------------------------------------------------------
     public void StartNewGame()
     {
-        // 초기화
+        ResetToNewGame();
+        SceneManager.LoadScene("Somnia");
+    }
+
+    // 씬 로드 없이 스탯만 초기화 (Awake에서도 안전하게 호출 가능)
+    private void ResetToNewGame()
+    {
         level = 1; currentExp = 0; memory = 0;
-        sanity = 10; awareness = 10; tenacity = 10; conviction = 10; insight = 10;
         hasLostMemory = false;
         isLoadedGame = false;
 
-        SceneManager.LoadScene("Somnia"); // 실제 씬 이름으로 변경
+        sanity = 0; awareness = 0; tenacity = 0; conviction = 0; insight = 0;
+        maxExp = 100; // 시작 maxExp는 PlayerStats.InitFromSO()에서 SO 값으로 덮어씌워짐
     }
 
     public void ContinueGame()
@@ -243,21 +260,26 @@ public class GameManager : MonoBehaviour
     {
         GameData data = new GameData();
 
-       if (playerStats != null)
+        // PlayerStats SO를 단일 참조로 사용
+        var so = playerStats?.baseStats;
+        int baseSanity     = so != null ? so.sanity     : 0;
+        int baseAwareness  = so != null ? so.awareness  : 0;
+        int baseTenacity   = so != null ? so.tenacity   : 0;
+        int baseConviction = so != null ? so.conviction : 0;
+        int baseInsight    = so != null ? so.insight    : 0;
+
+        if (playerStats != null)
         {
-            // 1. 성장 스탯 (레벨, 경험치)
-            data.level = playerStats.level;
+            data.level      = playerStats.level;
             data.currentExp = playerStats.currentExp;
 
-            // 2. ★ [수정] 속성 스탯도 플레이어 값을 직접 저장!
-            // (이제 매니저의 sanity 변수는 저장할 때 무시됨)
-            data.sanity = playerStats.sanity;
-            data.awareness = playerStats.awareness;
-            data.tenacity = playerStats.tenacity;
-            data.conviction = playerStats.conviction;
-            data.insight = playerStats.insight;
+            // SO 기본값을 뺀 성장치(delta)만 저장
+            data.sanityGrowth     = playerStats.sanity     - baseSanity;
+            data.awarenessGrowth  = playerStats.awareness  - baseAwareness;
+            data.tenacityGrowth   = playerStats.tenacity   - baseTenacity;
+            data.convictionGrowth = playerStats.conviction - baseConviction;
+            data.insightGrowth    = playerStats.insight    - baseInsight;
 
-            // 3. 위치 저장
             data.sceneName = SceneManager.GetActiveScene().name;
             data.posX = playerStats.transform.position.x;
             data.posY = playerStats.transform.position.y;
@@ -265,14 +287,13 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // 플레이어가 없으면 매니저가 기억하던 값 사용
-            data.level = level;
+            data.level      = level;
             data.currentExp = currentExp;
-            data.sanity = sanity;
-            data.awareness = awareness;
-            data.tenacity = tenacity;
-            data.conviction = conviction;
-            data.insight = insight;
+            data.sanityGrowth     = sanity     - baseSanity;
+            data.awarenessGrowth  = awareness  - baseAwareness;
+            data.tenacityGrowth   = tenacity   - baseTenacity;
+            data.convictionGrowth = conviction - baseConviction;
+            data.insightGrowth    = insight    - baseInsight;
         };
 
         // 지갑(Memory) 정보 저장
@@ -296,11 +317,12 @@ public class GameManager : MonoBehaviour
         currentExp = data.currentExp;
         memory = data.memory;
 
-        sanity = data.sanity;
-        awareness = data.awareness;
-        tenacity = data.tenacity;
-        conviction = data.conviction;
-        insight = data.insight;
+        // 성장치(delta) 로드 — ApplyStatsToPlayer에서 SO 기본값과 합산됨
+        sanity     = data.sanityGrowth;
+        awareness  = data.awarenessGrowth;
+        tenacity   = data.tenacityGrowth;
+        conviction = data.convictionGrowth;
+        insight    = data.insightGrowth;
         
         // 위치 정보 매니저 변수에 담아두기
         lastSavedPosition = new Vector3(data.posX, data.posY, data.posZ);

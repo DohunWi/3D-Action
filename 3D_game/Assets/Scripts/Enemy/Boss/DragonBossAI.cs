@@ -815,15 +815,24 @@ public class DragonBossAI : MonoBehaviour
             sfx?.OnBreathEnd();
             GameFeelManager.Instance?.StopLoopShake();
 
+            // 진행 중인 공격/콤보 강제 중단 후 포효
+            _comboQueue.Clear();
+            _isInCombo = false;
+            StopAllCoroutines();
+            if (_agent.enabled) _agent.isStopped = true;
+
             _animator.SetTrigger("doScream");
             sfx?.OnRoar();
             SoundManager.Instance?.CrossFadeBGM(phase2BGM, bgmFadeDuration);
             lastFlightTime = Time.time - flightCooldown;
-            
+
             // 공격/이동 속도 강화
             _walkSpeed *= 1.2f;
             _runSpeed  *= 1.2f;
             _agent.speed = _runSpeed;
+
+            // 포효 끝나면 추격 재개 (포효 애니메이션 길이에 맞게 조정)
+            Invoke(nameof(StartChase), 3.0f);
         }
     }
     // ==========================================================
@@ -927,8 +936,11 @@ public class DragonBossAI : MonoBehaviour
         ChangeState(DragonState.Die);
         _agent.enabled = false;
         _animator.SetTrigger("doDie");
+        fireBreathVFX?.SetActive(false);
+        sfx?.OnBreathEnd();
         sfx?.StopWingFlapLoop();
         sfx?.OnDeath();
+        GameFeelManager.Instance?.StopLoopShake();
         SoundManager.Instance?.RestoreFieldBGM(bgmFadeDuration);
         if (bossEgoBar != null) bossEgoBar.Hide();
         // 사망 연출, GameManager 이벤트 등 추가
