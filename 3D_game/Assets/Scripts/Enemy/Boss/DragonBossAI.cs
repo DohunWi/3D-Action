@@ -941,9 +941,19 @@ public class DragonBossAI : MonoBehaviour
         sfx?.StopWingFlapLoop();
         sfx?.OnDeath();
         GameFeelManager.Instance?.StopLoopShake();
-        SoundManager.Instance?.RestoreFieldBGM(bgmFadeDuration);
+        SoundManager.Instance?.StopBGM(bgmFadeDuration);
         if (bossEgoBar != null) bossEgoBar.Hide();
-        // 사망 연출, GameManager 이벤트 등 추가
+        StartCoroutine(LoadEndingScene());
+    }
+
+    [Header("--- Ending ---")]
+    public string endingSceneName = "Ending";
+    public float endingDelay = 4.0f; // 사망 애니메이션 재생 후 대기 시간
+
+    private IEnumerator LoadEndingScene()
+    {
+        yield return new WaitForSeconds(endingDelay);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(endingSceneName);
     }
 
     // ====================================

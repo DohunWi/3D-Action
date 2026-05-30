@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fdf76dc76fcf64718a94fb2ad86a14df, type: 3}
   m_Name: Knight
   m_EditorClassIdentifier: Assembly-CSharp::PlayerBaseStatsSO
-  sanity: 10
-  awareness: 10
-  tenacity: 10
-  conviction: 10
-  insight: 10
+  sanity: 20
+  awareness: 20
+  tenacity: 50
+  conviction: 100
+  insight: 20
   egoPerSanity: 10
   lucidityPerAwareness: 5
   baseVolition: 50

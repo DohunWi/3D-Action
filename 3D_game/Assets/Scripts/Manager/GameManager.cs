@@ -111,6 +111,7 @@ public class GameManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        if (scene.name == "Ending" || scene.name == "MainMenu") return;
         SoundManager.Instance?.PlayFieldBGM(fieldBGM, bgmFadeDuration);
 
         // 1. 유실물이 있고, 죽었던 그 맵에 돌아왔다면 생성
