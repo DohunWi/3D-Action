@@ -27,6 +27,10 @@ public class StatUpgradeUI : MonoBehaviour
     public TextMeshProUGUI levelText;        // 전체 레벨
     public TextMeshProUGUI currentMemoryText;// 보유 재화
 
+    [Header("Altar Description")]
+    public TextMeshProUGUI altarFlavorText;  // 고정 설명 텍스트
+    public TextMeshProUGUI altarStatusText;  // 동적 상태 메시지
+
     [Header("Input Settings")]
     // ★ 인스펙터에서 아까 만든 'Cancel' 액션을 드래그해서 넣을 변수
     public InputActionReference cancelAction;
@@ -82,18 +86,31 @@ public class StatUpgradeUI : MonoBehaviour
     {
         if (playerStats == null || playerWallet == null) return;
         playerController.ChangeState(PlayerState.Interact);
-        // ★ 켜는 게 아니라 투명도만 1로 올림
         UpdateUI();
         canvasGroup.alpha = 1f;
         canvasGroup.interactable = true;
         canvasGroup.blocksRaycasts = true;
-        
+
         // 게임 정지
         Time.timeScale = 0f;
-        
+
         // 마우스 커서 보이게 하기
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+
+        // 플레이버 텍스트
+        if (altarFlavorText != null)
+            altarFlavorText.text =
+                "A crystallized fragment of memory.\n" +
+                "Pray here to anchor your existence to this moment.\n" +
+                "<i>Your Ego will be restored. Your journey, recorded.</i>";
+
+        // 상태 메시지
+        if (altarStatusText != null)
+            altarStatusText.text =
+                "<color=#90EE90>✦ Progress saved</color>\n" +
+                "<color=#90EE90>✦ Ego fully restored</color>\n" +
+                "<color=#90EE90>✦ Potions refilled</color>";
     }
 
 

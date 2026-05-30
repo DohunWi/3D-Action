@@ -87,12 +87,12 @@ public class PlayerHUD : MonoBehaviour
             _playerStats.OnEgoChanged -= UpdateEgo;
             _playerStats.OnLucidityChanged -= UpdateLucidity;
             _playerStats.OnVolitionChanged -= UpdateVolition;
+            _playerStats.OnStatsRefreshed -= RefreshAllBars;
         }
         if (_playerWallet != null)
         {
             _playerWallet.OnMemoryChanged -= UpdateMemoriesUI;
         }
-        _playerStats.OnStatsRefreshed -= RefreshAllBars; // ★ 추가된 이벤트
     }
 
     // ---------------------------------------------------------

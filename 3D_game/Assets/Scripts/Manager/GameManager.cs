@@ -123,27 +123,33 @@ public class GameManager : MonoBehaviour
                 Debug.Log($"🩸 유실물 생성됨! ({lostMemoryAmount} Memory)");
             }
         }
-        // 2. 플레이어 위치 이동 (로드된 게임일 경우만)
+
+        // 2. 로드된 게임이면 한 프레임 뒤 스탯+위치 복구
+        // (PlayerStats.Start()의 InitFromSO() 이후에 덮어써야 하므로 코루틴 사용)
         if (isLoadedGame)
-        {
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
-            {
-                // CharacterController를 쓴다면 잠시 껐다 켜야 이동됨
-                CharacterController cc = player.GetComponent<CharacterController>();
-                if (cc != null) cc.enabled = false;
+            StartCoroutine(ApplyLoadedGameNextFrame());
+    }
 
-                // 위치 이동
-                player.transform.position = lastSavedPosition;
-                
-                // 회전값도 저장했다면 여기서 적용 (지금은 위치만)
-                // player.transform.rotation = ...
+    private IEnumerator ApplyLoadedGameNextFrame()
+    {
+        yield return null; // PlayerStats.Start() 완료 대기
 
-                if (cc != null) cc.enabled = true;
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player == null) yield break;
 
-                Debug.Log($"📍 플레이어 위치 복구 완료: {lastSavedPosition}");
-            }
-        }
+        PlayerStats pStats = player.GetComponent<PlayerStats>();
+        PlayerWallet pWallet = player.GetComponent<PlayerWallet>();
+
+        // 스탯 복구
+        ApplyStatsToPlayer(pStats, pWallet);
+
+        // 위치 복구
+        CharacterController cc = player.GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+        player.transform.position = lastSavedPosition;
+        if (cc != null) cc.enabled = true;
+
+        Debug.Log($"📍 세이브 데이터 복구 완료: 위치={lastSavedPosition}");
     }
 
     public void SaveLostMemory(int amount, Vector3 pos)
@@ -297,8 +303,11 @@ public class GameManager : MonoBehaviour
             data.insightGrowth    = insight    - baseInsight;
         };
 
-        // 지갑(Memory) 정보 저장
-        data.memory = memory; 
+        // 지갑(Memory) 정보 저장 — 항상 PlayerWallet 실제 값으로 저장
+        var wallet = playerStats != null
+            ? playerStats.GetComponent<PlayerWallet>()
+            : null;
+        data.memory = wallet != null ? wallet.GetCurrentMemory() : memory;
         
         if (potion != null) data.currentPotions = potion.currentPotions;
 
