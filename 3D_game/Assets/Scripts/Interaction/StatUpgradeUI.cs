@@ -16,6 +16,8 @@ public class StatUpgradeUI : MonoBehaviour
         public TextMeshProUGUI costText;  // ★ 각자 다른 비용 표시용
         public Button upgradeButton;      // 버튼 (돈 없으면 끄기 위해)
     }
+    public static StatUpgradeUI Instance;
+
     [Header("Target")]
     public PlayerStats playerStats;
     public PlayerWallet playerWallet;
@@ -52,7 +54,7 @@ public class StatUpgradeUI : MonoBehaviour
 
     private void Start()
     {
-        // ★ 게임 시작하자마자 "투명하게" 만들어서 숨김
+        Instance = this;
         if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
         Close();
     }
@@ -82,6 +84,12 @@ public class StatUpgradeUI : MonoBehaviour
     }
     }
 
+    private bool _justClosed;
+    private void LateUpdate() => _justClosed = false;
+
+    // Close()가 호출된 프레임에도 true 반환 → PauseMenuController가 같은 프레임에 pause 못 걸도록
+    public bool IsOpen => (canvasGroup != null && canvasGroup.alpha > 0f) || _justClosed;
+
     public void Open()
     {
         if (playerStats == null || playerWallet == null) return;
@@ -90,9 +98,6 @@ public class StatUpgradeUI : MonoBehaviour
         canvasGroup.alpha = 1f;
         canvasGroup.interactable = true;
         canvasGroup.blocksRaycasts = true;
-
-        // 게임 정지
-        Time.timeScale = 0f;
 
         // 마우스 커서 보이게 하기
         Cursor.visible = true;
@@ -108,24 +113,22 @@ public class StatUpgradeUI : MonoBehaviour
         // 상태 메시지
         if (altarStatusText != null)
             altarStatusText.text =
-                "<color=#90EE90>✦ Progress saved</color>\n" +
-                "<color=#90EE90>✦ Ego fully restored</color>\n" +
-                "<color=#90EE90>✦ Potions refilled</color>";
+                "<color=#90EE90>* Progress saved</color>\n" +
+                "<color=#90EE90>* Ego fully restored</color>\n" +
+                "<color=#90EE90>* Potions refilled</color>";
     }
 
 
     public void Close()
     {
+        _justClosed = true;
         playerController.ChangeState(PlayerState.Locomotion);
         // ★ 끄는 게 아니라 투명도만 0으로 내림
         canvasGroup.alpha = 0f;
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;
         
-        // 게임 재개
-        Time.timeScale = 1f;
-        
-        // 마우스 다시 잠그기 (FPS/TPS 게임이라면)
+        // 마우스 다시 잠그기
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }

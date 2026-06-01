@@ -22,7 +22,11 @@ public class PauseMenuController : MonoBehaviour
     private void Update()
     {
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            if (DialogueUI.Instance != null && DialogueUI.Instance.IsOpen) return;
+            if (StatUpgradeUI.Instance != null && StatUpgradeUI.Instance.IsOpen) return;
             Toggle();
+        }
     }
 
     private void Toggle()
