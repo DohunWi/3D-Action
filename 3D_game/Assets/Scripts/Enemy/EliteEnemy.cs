@@ -303,13 +303,17 @@ public class EliteEnemy : Enemy
     // 엘리트 사망 연출 (슬로우 모션)
     protected override void OnDie()
     {
-        if (auraParticle != null) auraParticle.Stop(); // 아우라 끄기
-        
-        // 죽는 순간 임팩트 (시간 느리게)
-        Time.timeScale = 0.5f; 
-        Invoke("ResetTimeScale", 0.5f); // 0.5초(실제시간 1초) 뒤 복구
+        if (auraParticle != null) auraParticle.Stop();
+
+        Time.timeScale = 0.5f;
+        Invoke("ResetTimeScale", 0.5f);
         doorScript.isLocked = false;
-        base.OnDie(); // 부모의 사망 처리 실행
+        if (GameManager.Instance != null) GameManager.Instance.eliteDefeated = true;
+
+        // 세계가 반응하는 월드 내레이션 (unscaledDeltaTime 기반 — 슬로우모션 중에도 동작)
+        AreaNameUI.Instance?.Show("The ward has broken.\nThe Tower remembers who you are.");
+
+        base.OnDie();
     }
 
     private void ResetTimeScale()
