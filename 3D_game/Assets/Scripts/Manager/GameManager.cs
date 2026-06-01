@@ -38,8 +38,12 @@ public class GameManager : MonoBehaviour
     [Header("Save Data Buffer")]
     // 저장된 위치를 잠시 기억할 변수 추가
     public bool newGame = false;  // 테스트용 플래그 - 인스펙터에서 설정
-    public Vector3 lastSavedPosition; 
+    public Vector3 lastSavedPosition;
     public bool isLoadedGame = false; // 이어하기/부활인지, 새 게임인지 구분
+
+    [Header("Game Progress Flags")]
+    public bool eliteDefeated = false; // 엘리트 처치 여부 (NPC 대사 분기용)
+
     private string path;
 
     private void Awake()
@@ -224,6 +228,7 @@ public class GameManager : MonoBehaviour
         level = 1; currentExp = 0; memory = 0;
         hasLostMemory = false;
         isLoadedGame = false;
+        eliteDefeated = false;
 
         sanity = 0; awareness = 0; tenacity = 0; conviction = 0; insight = 0;
         maxExp = 100; // 시작 maxExp는 PlayerStats.InitFromSO()에서 SO 값으로 덮어씌워짐
