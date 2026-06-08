@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponName: Bite
   description: Dragon's bite attack
-  damage: 10
+  damage: 30
   composureDamage: 10
   attackRange: 1.5
   convictionScaling: 1

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponName: Body dive
   description: Dragon's body dive attack
-  damage: 10
+  damage: 40
   composureDamage: 10
   attackRange: 1.5
   convictionScaling: 1

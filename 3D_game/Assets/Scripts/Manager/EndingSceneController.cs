@@ -37,6 +37,8 @@ public class EndingSceneController : MonoBehaviour
     private IEnumerator FadeOutAndLoad()
     {
         yield return StartCoroutine(Fade(0f, 1f));
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
         SceneManager.LoadScene(mainMenuSceneName);
     }
 

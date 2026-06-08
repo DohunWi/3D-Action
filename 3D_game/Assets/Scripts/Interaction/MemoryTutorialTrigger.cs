@@ -20,8 +20,12 @@ public class MemoryTutorialTrigger : MonoBehaviour
 
     private void Start()
     {
-        _wallet = FindFirstObjectByType<PlayerWallet>();
-        if (_wallet != null)
+        // 저장된 진행 상태 확인
+        if (GameManager.Instance != null)
+            _triggered = GameManager.Instance.memoryTutorialTriggered;
+
+        _wallet = FindAnyObjectByType<PlayerWallet>();
+        if (_wallet != null && !_triggered)
             _wallet.OnMemoryChanged += onMemoryChanged;
     }
 
@@ -38,6 +42,10 @@ public class MemoryTutorialTrigger : MonoBehaviour
 
         _triggered = true;
         _wallet.OnMemoryChanged -= onMemoryChanged;
+
+        // GameManager에 튜토리얼 완료 상태 저장
+        if (GameManager.Instance != null)
+            GameManager.Instance.memoryTutorialTriggered = true;
 
         TutorialUI.Instance?.Show(tutorialTitle, tutorialContent, displayDuration);
     }

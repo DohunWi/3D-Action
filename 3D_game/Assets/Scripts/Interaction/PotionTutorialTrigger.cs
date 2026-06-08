@@ -20,8 +20,12 @@ public class PotionTutorialTrigger : MonoBehaviour
 
     private void Start()
     {
-        _playerStats = FindFirstObjectByType<PlayerStats>();
-        if (_playerStats != null)
+        // 저장된 진행 상태 확인
+        if (GameManager.Instance != null)
+            _triggered = GameManager.Instance.potionTutorialTriggered;
+
+        _playerStats = FindAnyObjectByType<PlayerStats>();
+        if (_playerStats != null && !_triggered)
             _playerStats.OnEgoChanged += onEgoChanged;
     }
 
@@ -38,6 +42,10 @@ public class PotionTutorialTrigger : MonoBehaviour
 
         _triggered = true;
         _playerStats.OnEgoChanged -= onEgoChanged;
+
+        // GameManager에 튜토리얼 완료 상태 저장
+        if (GameManager.Instance != null)
+            GameManager.Instance.potionTutorialTriggered = true;
 
         TutorialUI.Instance?.Show(tutorialTitle, tutorialContent, displayDuration);
     }

@@ -2,7 +2,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
 using System;
-using System.IO; 
+using System.IO;
+using System.Linq; 
 
 public class GameManager : MonoBehaviour
 {
@@ -44,6 +45,13 @@ public class GameManager : MonoBehaviour
     [Header("Game Progress Flags")]
     public bool eliteDefeated = false; // 엘리트 처치 여부 (NPC 대사 분기용)
 
+    [Header("Tutorial Completion")]
+    public bool memoryTutorialTriggered = false;
+    public bool potionTutorialTriggered = false;
+
+    [Header("Monologue Completion")]
+    private System.Collections.Generic.HashSet<string> _triggeredMonologues = new System.Collections.Generic.HashSet<string>();
+
     private string path;
 
     private void Awake()
@@ -51,7 +59,11 @@ public class GameManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject); 
+
+            // DontDestroyOnLoad가 제대로 작동하려면 root GameObject여야 함
+            transform.SetParent(null);
+
+            DontDestroyOnLoad(gameObject);
             path = Path.Combine(Application.persistentDataPath, "save.json");
             // =========================================================
             // 게임 켜지자마자 저장된 파일 읽기 (Auto Load)
@@ -108,6 +120,19 @@ public class GameManager : MonoBehaviour
     }
 
     // -----------------------------------------------------------------------
+    // 0️⃣ Monologue 상태 관리
+    // -----------------------------------------------------------------------
+    public bool IsMonologueTriggered(string triggerID)
+    {
+        return _triggeredMonologues.Contains(triggerID);
+    }
+
+    public void MarkMonologueTriggered(string triggerID)
+    {
+        _triggeredMonologues.Add(triggerID);
+    }
+
+    // -----------------------------------------------------------------------
     // 1️⃣ 유실물 (Lost Memory) 로직 - 죽은 위치에 생성
     // -----------------------------------------------------------------------
     private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
@@ -139,12 +164,23 @@ public class GameManager : MonoBehaviour
         yield return null; // PlayerStats.Start() 완료 대기
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player == null) yield break;
+        if (player == null)
+        {
+            Debug.LogError("❌ 플레이어를 찾을 수 없음! Tag='Player' 확인 필요");
+            yield break;
+        }
 
         PlayerStats pStats = player.GetComponent<PlayerStats>();
         PlayerWallet pWallet = player.GetComponent<PlayerWallet>();
 
+        if (pStats == null)
+        {
+            Debug.LogError("❌ PlayerStats 컴포넌트를 찾을 수 없음!");
+            yield break;
+        }
+
         // 스탯 복구
+        Debug.Log($"📍 부활 시 세이브 데이터 적용: Lv.{level}, 스탯={sanity}/{awareness}/{tenacity}/{conviction}/{insight}");
         ApplyStatsToPlayer(pStats, pWallet);
 
         // 위치 복구
@@ -153,7 +189,7 @@ public class GameManager : MonoBehaviour
         player.transform.position = lastSavedPosition;
         if (cc != null) cc.enabled = true;
 
-        Debug.Log($"📍 세이브 데이터 복구 완료: 위치={lastSavedPosition}");
+        Debug.Log($"📍 세이브 데이터 복구 완료: 위치={lastSavedPosition}, Lv.{pStats.level}");
     }
 
     public void SaveLostMemory(int amount, Vector3 pos)
@@ -249,19 +285,28 @@ public class GameManager : MonoBehaviour
 
     public void RespawnAtAltar()
     {
+        Debug.Log("💀 RespawnAtAltar 호출됨");
+
         // 1. 마지막 세이브(제단) 불러오기
-        if (!LoadGameFromJson()) 
+        if (!LoadGameFromJson())
         {
+            Debug.Log("⚠️ 저장 파일 없음 → 새 게임 시작");
             StartNewGame();
             return;
         }
 
+        Debug.Log($"✅ 저장 파일 로드됨 - Lv.{level}, 위치: {lastSavedPosition}");
+
         // 2. 소울라이크 규칙: 죽었으니 소지금은 0원 (유실물은 이미 저장됨)
-        memory = 0; 
+        memory = 0;
+        isLoadedGame = true; // ★ 중요: 씬 로드 후 PlayerStats.Start()에서 확인할 값
+        newGame = false;     // ★ DontDestroyOnLoad 실패 대비: 새 GameManager가 생성되면 이 플래그 확인
+
+        Debug.Log($"🔄 씬 재시작: {SceneManager.GetActiveScene().name}");
 
         // 3. 씬 재시작 (플레이어 위치는 Altar 로직이나 시작 지점으로 이동됨)
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-        
+
         Debug.Log("💀 사망 루프: 제단 스탯으로 부활 (Memory 0)");
     }
 
@@ -313,8 +358,15 @@ public class GameManager : MonoBehaviour
             ? playerStats.GetComponent<PlayerWallet>()
             : null;
         data.memory = wallet != null ? wallet.GetCurrentMemory() : memory;
-        
+
         if (potion != null) data.currentPotions = potion.currentPotions;
+
+        // 튜토리얼 완료 상태 저장
+        data.memoryTutorialTriggered = memoryTutorialTriggered;
+        data.potionTutorialTriggered = potionTutorialTriggered;
+
+        // Monologue 완료 상태 저장
+        data.triggeredMonologues = new StringList { items = _triggeredMonologues.ToArray() };
 
         string json = JsonUtility.ToJson(data, true);
         File.WriteAllText(path, json);
@@ -342,6 +394,18 @@ public class GameManager : MonoBehaviour
         // 위치 정보 매니저 변수에 담아두기
         lastSavedPosition = new Vector3(data.posX, data.posY, data.posZ);
         isLoadedGame = true; // "나 지금 로드한 상태야"라고 표시
+
+        // 튜토리얼 완료 상태 로드
+        memoryTutorialTriggered = data.memoryTutorialTriggered;
+        potionTutorialTriggered = data.potionTutorialTriggered;
+
+        // Monologue 완료 상태 로드
+        _triggeredMonologues.Clear();
+        if (data.triggeredMonologues != null && data.triggeredMonologues.items != null)
+        {
+            foreach (string id in data.triggeredMonologues.items)
+                _triggeredMonologues.Add(id);
+        }
 
         return true;
     }

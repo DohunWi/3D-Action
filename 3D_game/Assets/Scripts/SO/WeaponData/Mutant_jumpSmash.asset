@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponName: JumpSmash
   description: 
-  damage: 25
-  poiseDamage: 10
+  damage: 30
+  composureDamage: 10
   attackRange: 3
+  convictionScaling: 1
   comboMultipliers:
   - 1
   swingSound: {fileID: 8300000, guid: f5833dac77207483d83e7da73b5a12e4, type: 3}

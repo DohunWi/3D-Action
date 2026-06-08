@@ -5464,6 +5464,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6fa3d596dcda48849d0fb4669897792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonologueTrigger
+  triggerID: monologue_005
   speakerName: ...
   lines:
   - 'This place...
@@ -6161,6 +6162,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6fa3d596dcda48849d0fb4669897792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonologueTrigger
+  triggerID: monologue_002
   speakerName: ...
   lines:
   - "Something is here.\nThe air reeks of corrupted memory \u2014\ndense, suffocating."
@@ -8445,6 +8447,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6fa3d596dcda48849d0fb4669897792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonologueTrigger
+  triggerID: monologue_004
   speakerName: ...
   lines:
   - 'They don''t see me.
@@ -24808,6 +24811,8 @@ MonoBehaviour:
   lastSavedPosition: {x: 0, y: 0, z: 0}
   isLoadedGame: 0
   eliteDefeated: 0
+  memoryTutorialTriggered: 0
+  potionTutorialTriggered: 0
 --- !u!4 &1156151685
 Transform:
   m_ObjectHideFlags: 0
@@ -25964,6 +25969,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6fa3d596dcda48849d0fb4669897792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonologueTrigger
+  triggerID: monologue_003
   speakerName: ...
   lines:
   - 'I''m still here.
@@ -43784,6 +43790,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6fa3d596dcda48849d0fb4669897792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonologueTrigger
+  triggerID: monologue_001
   speakerName: ...
   lines:
   - 'The top of the Tower...
@@ -45273,6 +45280,10 @@ PrefabInstance:
     - target: {fileID: 1451072314154839445, guid: 9cef3d89f7f024b37af177ef4795ddd1, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 16.238426
+      objectReference: {fileID: 0}
+    - target: {fileID: 1463608294785311587, guid: 9cef3d89f7f024b37af177ef4795ddd1, type: 3}
+      propertyPath: damagePerHit
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 1649217584798775297, guid: 9cef3d89f7f024b37af177ef4795ddd1, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x

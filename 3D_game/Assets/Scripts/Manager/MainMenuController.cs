@@ -16,6 +16,9 @@ public class MainMenuController : MonoBehaviour
     public Image fadeImage;
     public float fadeDuration = 1.0f;
 
+    [Header("배경")]
+    public GameObject backgroundImage; // ★ Inspector에서 배경 Image 오브젝트 연결
+
     [Header("BGM")]
     public AudioClip menuBGM;
     public float bgmFadeDuration = 2.0f;
@@ -36,6 +39,9 @@ public class MainMenuController : MonoBehaviour
 
     private void Start()
     {
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
         string savePath = Path.Combine(Application.persistentDataPath, "save.json");
         if (continueButton != null)
             continueButton.interactable = File.Exists(savePath);
@@ -73,6 +79,9 @@ public class MainMenuController : MonoBehaviour
     {
         // 1. Fade Out
         yield return StartCoroutine(FadeOut());
+
+        // 배경 이미지 숨기기 (인트로는 검은 화면에 텍스트만)
+        if (backgroundImage != null) backgroundImage.SetActive(false);
 
         // 2. 인트로 텍스트 시퀀스
         if (introText != null && introLines.Length > 0)

@@ -1,0 +1,12 @@
+{
+    "asset": "5c1f18120c1d445e7bbd7202c50a0d05",
+    "fileName": "019e7d58-3f18-766f-bf43-ccee5ba07a2f_Preview.png",
+    "prompt": "Dark fantasy character skin texture. Pale grey skin with subtle veins, worn dark tattered cloth robe with silver thread details. Nightmare energy glow hints. Souls-like RPG style, seamless tileable texture.",
+    "negativePrompt": "",
+    "model": "gemini-3.1-flash-texture",
+    "modelName": "Gemini 3.1 Nano Banana 2",
+    "customSeed": 1162521129,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation"
+}

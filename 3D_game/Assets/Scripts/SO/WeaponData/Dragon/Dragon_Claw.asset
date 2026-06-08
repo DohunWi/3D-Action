@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponName: Claw
   description: Dragon's claw attack
-  damage: 10
+  damage: 35
   composureDamage: 10
   attackRange: 1.5
   convictionScaling: 1

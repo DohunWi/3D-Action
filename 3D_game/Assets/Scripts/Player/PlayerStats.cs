@@ -65,15 +65,20 @@ public class PlayerStats : CharacterStats
         if (baseStats == null)
             Debug.LogWarning("[PlayerStats] PlayerBaseStatsSO가 연결되지 않았습니다!");
 
-        if (GameManager.Instance != null && GameManager.Instance.isLoadedGame)
+        bool isLoaded = GameManager.Instance != null && GameManager.Instance.isLoadedGame;
+        Debug.Log($"🔍 PlayerStats.Start - isLoadedGame: {isLoaded}, GameManager: {(GameManager.Instance != null ? "O" : "X")}");
+
+        if (isLoaded)
         {
             // 세이브 파일 있을 때만 GameManager 값 적용
             PlayerWallet myWallet = GetComponent<PlayerWallet>();
+            Debug.Log($"📂 로드 경로: 저장된 데이터 적용 (Lv.{GameManager.Instance.level})");
             GameManager.Instance.ApplyStatsToPlayer(this, myWallet);
         }
         else
         {
             // 뉴게임 or 테스트 씬 → SO 기본값 사용
+            Debug.Log($"🆕 초기화 경로: SO 기본값 사용");
             InitFromSO();
         }
 
@@ -84,6 +89,8 @@ public class PlayerStats : CharacterStats
 
         OnLucidityChanged?.Invoke(currentLucidity, maxLucidity);
         OnVolitionChanged?.Invoke(currentVolition, maxVolition);
+
+        Debug.Log($"✅ PlayerStats 초기화 완료: Lv.{level}, HP={maxEgo}, 스탯={sanity}/{awareness}/{tenacity}/{conviction}/{insight}");
     }
 
     // SO 기본값으로 초기화 (뉴게임 or 테스트)

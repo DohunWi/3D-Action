@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponName: Mutant_L
   description: 
-  damage: 15
-  poiseDamage: 10
+  damage: 20
+  composureDamage: 10
   attackRange: 1.5
+  convictionScaling: 1
   comboMultipliers:
   - 1
   swingSound: {fileID: 8300000, guid: 40cd7e094426f492b9992da94223b196, type: 3}
