@@ -117,3 +117,13 @@ InitTestScene*.unity*
 
 # 맥 시스템 파일
 .DS_Store
+
+# 성능 측정 CSV 데이터 (로컬에서만 관리)
+3D_game/Assets/PerformanceData/*.csv
+3D_game/Assets/PerformanceData/*.csv.meta
+
+# Profiler 바이너리 캡처 (용량 과다 — .png/.highlights/.csv 만 커밋)
+3D_game/ProfilerCaptures/**/*.data
+3D_game/ProfilerCaptures/**/*.data.meta
+3D_game/ProfilerCaptures/**/*.bc7
+3D_game/ProfilerCaptures/**/*.bc7.meta
