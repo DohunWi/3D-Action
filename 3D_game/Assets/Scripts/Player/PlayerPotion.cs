@@ -40,11 +40,13 @@ public class PlayerPotion : MonoBehaviour
     }
     private void OnEnable()
     {
+        if (_inputActions == null) return;
         _inputActions.Player.Enable();
         _inputActions.Player.UseItem.performed += OnUseItem;
     }
     private void OnDisable()
     {
+        if (_inputActions == null) return;
         _inputActions.Player.Disable();
         _inputActions.Player.UseItem.performed -= OnUseItem;
     }

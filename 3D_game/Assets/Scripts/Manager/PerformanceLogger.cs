@@ -82,13 +82,11 @@ public class PerformanceLogger : MonoBehaviour
 
     private void initSession()
     {
-        // 에디터/개발 빌드: Assets/PerformanceData/ 에 저장
-        // Application.dataPath = Assets 폴더 경로
-        string dir = Path.Combine(Application.dataPath, "PerformanceData");
-        if (!Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-
+        // 에디터/개발 빌드: Assets/PerformanceData/<timestamp>/ 에 저장
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string dir = Path.Combine(Application.dataPath, "PerformanceData", timestamp);
+        Directory.CreateDirectory(dir);
+
         _filePath = Path.Combine(dir, $"perf_{timestamp}.csv");
         _sb = new StringBuilder();
         _sb.AppendLine(CSV_HEADER);

@@ -54,7 +54,10 @@ public class PlayerWeapon : Weapon
             {
                 // 충돌 지점 찾기 (없으면 적 위치)
                 Vector3 hitPoint = victim.ClosestPoint(transform.position);
-                Instantiate(weaponData.hitVFX, hitPoint, Quaternion.identity);
+                if (VFXPoolManager.Instance != null)
+                    VFXPoolManager.Instance.PlayVFX(weaponData.hitVFX, hitPoint, Quaternion.identity);
+                else
+                    Instantiate(weaponData.hitVFX, hitPoint, Quaternion.identity);
             }
 
             // C. 추가 연출 (카메라 쉐이크 등)

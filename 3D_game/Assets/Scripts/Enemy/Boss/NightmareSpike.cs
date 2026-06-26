@@ -59,8 +59,8 @@ public class NightmareSpike : MonoBehaviour, IDamageable
             }
             yield return null;
         }
-        // 만약 타겟이 사라졌다면 발사 취소 또는 직진 후 소멸 처리
-        Destroy(gameObject);
+        // 만약 타겟이 사라졌다면 풀에 반환
+        ReturnToPool();
     }
 
     private void HitBoss()
@@ -70,6 +70,22 @@ public class NightmareSpike : MonoBehaviour, IDamageable
             targetHurtbox.TakeDamage(damage, composureDamage, null);
             SoundManager.Instance?.PlaySFX(impactClip, transform.position);
         }
-        Destroy(gameObject);
+        ReturnToPool();
+    }
+
+    private void ReturnToPool()
+    {
+        if (NightmareSpikePool.Instance != null)
+            NightmareSpikePool.Instance.Return(this);
+        else
+            Destroy(gameObject);
+    }
+
+    private void OnDisable()
+    {
+        StopAllCoroutines();
+        _isLaunched = false;
+        _isReady = false;
+        targetHurtbox = null;
     }
 }

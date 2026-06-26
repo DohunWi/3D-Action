@@ -10,7 +10,12 @@ public class NightmareFragmentPiece : MonoBehaviour
     public void Break()
     {
         if (breakVFX != null)
-            Instantiate(breakVFX, transform.position, Quaternion.identity);
+        {
+            if (VFXPoolManager.Instance != null)
+                VFXPoolManager.Instance.PlayVFX(breakVFX, transform.position, Quaternion.identity);
+            else
+                Instantiate(breakVFX, transform.position, Quaternion.identity);
+        }
         if (breakSound != null && SoundManager.Instance != null)
             SoundManager.Instance.PlaySFX(breakSound, transform.position);
 

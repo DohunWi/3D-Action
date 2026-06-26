@@ -45,7 +45,13 @@ public class MemoryPickup : MonoBehaviour
 
         // 사운드 & 이펙트
         if (pickupSound != null) AudioSource.PlayClipAtPoint(pickupSound, transform.position);
-        if (pickupVFX != null) Instantiate(pickupVFX, transform.position, Quaternion.identity);
+        if (pickupVFX != null)
+        {
+            if (VFXPoolManager.Instance != null)
+                VFXPoolManager.Instance.PlayVFX(pickupVFX, transform.position, Quaternion.identity);
+            else
+                Instantiate(pickupVFX, transform.position, Quaternion.identity);
+        }
 
         Destroy(gameObject);
     }

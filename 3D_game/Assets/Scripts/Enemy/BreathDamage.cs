@@ -22,8 +22,8 @@ public class BreathDamage : MonoBehaviour
 
     private void OnEnable()
     {
-        _hitHistory.Clear(); // 켜질 때 기록 초기화
-        SoundManager.Instance.PlaySFX(fireSound, transform.position, 1.0f);
+        _hitHistory.Clear();
+        SoundManager.Instance?.PlaySFX(fireSound, transform.position, 1.0f);
     }
 
     // ★ 핵심: 파티클이 무언가에 닿으면 유니티가 이 함수를 호출해줌

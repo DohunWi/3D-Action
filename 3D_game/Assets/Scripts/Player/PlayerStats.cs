@@ -205,7 +205,6 @@ public class PlayerStats : CharacterStats
             OnLucidityChanged?.Invoke(currentLucidity, maxLucidity);
             return true;
         }
-        Debug.Log("마나가 부족합니다!");
         return false;
     }
     // 스태미나 사용 함수 (성공하면 true, 실패하면 false 리턴)
@@ -221,7 +220,6 @@ public class PlayerStats : CharacterStats
             return true;
         }
         
-        Debug.Log("스태미나 부족! (헥헥)");
         return false;
     }
     // 확인용 함수: 깎지는 않고 검사만 함
@@ -234,8 +232,7 @@ public class PlayerStats : CharacterStats
         // 1. 무적 판정 로직 추가
         if (_playerController != null && _playerController.currentState == PlayerState.Roll)
         {
-            Debug.Log("구르기 무적(i-frame)으로 공격을 피했습니다!");
-            return; // 데미지 적용 안 하고 종료
+            return; // 구르기 무적(i-frame)
         }
         // 2. 패링 시도
         if (_playerController.currentState == PlayerState.Parry)
@@ -249,8 +246,6 @@ public class PlayerStats : CharacterStats
                 // 내 전방(parryAngle / 2) 안에 적이 있는가?
                 if (angle < parryAngle * 0.5f)
                 {
-                    Debug.Log($"<color=cyan>패링 성공! (Angle: {angle:F1})</color>");
-                    
                     // A. 적에게 경직 주기
                     Enemy enemy = attacker.GetComponentInParent<Enemy>();
                     if (enemy != null) enemy.GetParried();
@@ -341,6 +336,5 @@ public class PlayerStats : CharacterStats
         InvokeEgoChanged(currentEgo, maxEgo);
 
         // (선택) 회복 이펙트/사운드 재생 등
-        Debug.Log($"<color=green>자아 회복! (+{amount}) 현재: {currentEgo}</color>");
     }
 }

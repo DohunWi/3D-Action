@@ -22,6 +22,15 @@ public class PlayerLockOn : MonoBehaviour
 
     // 내부 변수
     private GameObject _currentIcon; // 실제 생성된 아이콘 인스턴스
+    private Camera _mainCamera;             // Camera.main 캐싱 (매 프레임 태그 검색 방지)
+    private Transform _cameraTransform;     // 빌보드용 카메라 Transform 캐싱
+    private CharacterStats _targetStats;    // 현재 락온 타겟의 Stats 캐싱 (매 프레임 GetComponent 방지)
+
+    private void Awake()
+    {
+        _mainCamera = Camera.main;
+        if (_mainCamera != null) _cameraTransform = _mainCamera.transform;
+    }
 
     // 락온 켜기/끄기 토글 (PlayerController가 호출)
     public void ToggleLockOn()
@@ -38,12 +47,21 @@ public class PlayerLockOn : MonoBehaviour
 
     private void FindTarget()
     {
+        // 카메라가 아직 캐싱 안 됐으면 (씬 전환 등) 보강
+        if (_mainCamera == null)
+        {
+            _mainCamera = Camera.main;
+            if (_mainCamera != null) _cameraTransform = _mainCamera.transform;
+            if (_mainCamera == null) return;
+        }
+
         // 1. 주변 적 탐색
         Collider[] colliders = Physics.OverlapSphere(transform.position, detectionRadius, enemyLayer);
-        
+
         // 거리 대신 '화면 중앙과의 거리'를 비교할 변수
-        float minScreenDistance = Mathf.Infinity; 
+        float minScreenDistance = Mathf.Infinity;
         Transform bestTarget = null;
+        CharacterStats bestStats = null;
 
         // 화면 정중앙 좌표 (0.5, 0.5)
         Vector2 screenCenter = new Vector2(0.5f, 0.5f);
@@ -51,13 +69,13 @@ public class PlayerLockOn : MonoBehaviour
         foreach (var collider in colliders)
         {
             CharacterStats targetStats = collider.GetComponent<CharacterStats>();
-            
+
             // 살아있는지 체크
             if (targetStats != null && targetStats.currentEgo > 0)
             {
                 // ★ [핵심 로직 변경] ★
                 // 3D 월드 좌표를 -> 2D 뷰포트 좌표(0~1)로 변환
-                Vector3 viewPos = Camera.main.WorldToViewportPoint(collider.transform.position);
+                Vector3 viewPos = _mainCamera.WorldToViewportPoint(collider.transform.position);
 
                 // 조건 1: 화면 앞쪽에 있어야 함 (z < 0 이면 카메라 뒤에 있는 것)
                 // 조건 2: 화면 안에 들어와 있어야 함 (x, y가 0~1 사이)
@@ -71,6 +89,7 @@ public class PlayerLockOn : MonoBehaviour
                     {
                         minScreenDistance = distFromCenter;
                         bestTarget = collider.transform;
+                        bestStats = targetStats;
                     }
                 }
             }
@@ -80,7 +99,7 @@ public class PlayerLockOn : MonoBehaviour
         if (bestTarget != null)
         {
             currentTarget = bestTarget;
-            Debug.Log($"<color=cyan>시야 중앙 타겟 락온: {currentTarget.name}</color>");
+            _targetStats = bestStats; // 타겟 Stats 캐싱 (Update의 매 프레임 GetComponent 제거)
 
             EnableLockOnIcon();
             if (lockOnCamera != null)
@@ -123,7 +142,8 @@ public class PlayerLockOn : MonoBehaviour
                 _currentIcon.transform.position = targetPos;
 
                 // 항상 카메라를 정면으로 바라보게 함
-                _currentIcon.transform.LookAt(Camera.main.transform);
+                if (_cameraTransform != null)
+                    _currentIcon.transform.LookAt(_cameraTransform);
             }
         }
     }
@@ -131,7 +151,7 @@ public class PlayerLockOn : MonoBehaviour
     public void ClearLockOn()
     {
         currentTarget = null;
-        Debug.Log("락온 해제");
+        _targetStats = null;
         // ★ 아이콘 끄기
         if (_currentIcon != null)
         {
@@ -158,10 +178,10 @@ public class PlayerLockOn : MonoBehaviour
     private bool CheckTargetIsDeadOrNull()
     {
         if (currentTarget == null) return true;
-        
-        var stats = currentTarget.GetComponent<CharacterStats>();
-        if (stats != null && stats.currentEgo <= 0) return true;
-        
+
+        // 락온 시 캐싱해둔 Stats 사용 (매 프레임 GetComponent 제거)
+        if (_targetStats != null && _targetStats.currentEgo <= 0) return true;
+
         return false;
     }
     private void OnDrawGizmosSelected()
