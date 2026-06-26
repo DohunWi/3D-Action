@@ -222,25 +222,28 @@ public class GameManager : MonoBehaviour
     // 2️⃣ 데이터 동기화 (GameManager -> PlayerStats)
     // JSON에서 로드한 데이터를 실제 플레이어에게 적용하는 유틸리티 함수
     // -----------------------------------------------------------------------
+    // SO 기본 스탯 5종을 한 번에 읽어오는 헬퍼 (SO 없으면 전부 0)
+    private static (int sanity, int awareness, int tenacity, int conviction, int insight)
+        GetBaseStats(PlayerBaseStatsSO so)
+    {
+        if (so == null) return (0, 0, 0, 0, 0);
+        return (so.sanity, so.awareness, so.tenacity, so.conviction, so.insight);
+    }
+
     public void ApplyStatsToPlayer(PlayerStats stats, PlayerWallet wallet)
     {
         stats.level      = level;
         stats.currentExp = currentExp;
         stats.maxExp     = maxExp;
 
-        // PlayerStats에 연결된 SO를 단일 참조로 사용
-        var so = stats.baseStats;
-        int baseSanity     = so != null ? so.sanity     : 0;
-        int baseAwareness  = so != null ? so.awareness  : 0;
-        int baseTenacity   = so != null ? so.tenacity   : 0;
-        int baseConviction = so != null ? so.conviction : 0;
-        int baseInsight    = so != null ? so.insight    : 0;
+        // PlayerStats에 연결된 SO 기본값 + 성장치(delta) 합산
+        var b = GetBaseStats(stats.baseStats);
 
-        stats.sanity     = baseSanity     + sanity;
-        stats.awareness  = baseAwareness  + awareness;
-        stats.tenacity   = baseTenacity   + tenacity;
-        stats.conviction = baseConviction + conviction;
-        stats.insight    = baseInsight    + insight;
+        stats.sanity     = b.sanity     + sanity;
+        stats.awareness  = b.awareness  + awareness;
+        stats.tenacity   = b.tenacity   + tenacity;
+        stats.conviction = b.conviction + conviction;
+        stats.insight    = b.insight    + insight;
 
         if (wallet != null)
             wallet.SetCurrentMemory(memory);
@@ -317,13 +320,8 @@ public class GameManager : MonoBehaviour
     {
         GameData data = new GameData();
 
-        // PlayerStats SO를 단일 참조로 사용
-        var so = playerStats?.baseStats;
-        int baseSanity     = so != null ? so.sanity     : 0;
-        int baseAwareness  = so != null ? so.awareness  : 0;
-        int baseTenacity   = so != null ? so.tenacity   : 0;
-        int baseConviction = so != null ? so.conviction : 0;
-        int baseInsight    = so != null ? so.insight    : 0;
+        // PlayerStats SO 기본값 (성장치 delta 계산용)
+        var b = GetBaseStats(playerStats?.baseStats);
 
         if (playerStats != null)
         {
@@ -331,11 +329,11 @@ public class GameManager : MonoBehaviour
             data.currentExp = playerStats.currentExp;
 
             // SO 기본값을 뺀 성장치(delta)만 저장
-            data.sanityGrowth     = playerStats.sanity     - baseSanity;
-            data.awarenessGrowth  = playerStats.awareness  - baseAwareness;
-            data.tenacityGrowth   = playerStats.tenacity   - baseTenacity;
-            data.convictionGrowth = playerStats.conviction - baseConviction;
-            data.insightGrowth    = playerStats.insight    - baseInsight;
+            data.sanityGrowth     = playerStats.sanity     - b.sanity;
+            data.awarenessGrowth  = playerStats.awareness  - b.awareness;
+            data.tenacityGrowth   = playerStats.tenacity   - b.tenacity;
+            data.convictionGrowth = playerStats.conviction - b.conviction;
+            data.insightGrowth    = playerStats.insight    - b.insight;
 
             data.sceneName = SceneManager.GetActiveScene().name;
             data.posX = playerStats.transform.position.x;
@@ -346,12 +344,12 @@ public class GameManager : MonoBehaviour
         {
             data.level      = level;
             data.currentExp = currentExp;
-            data.sanityGrowth     = sanity     - baseSanity;
-            data.awarenessGrowth  = awareness  - baseAwareness;
-            data.tenacityGrowth   = tenacity   - baseTenacity;
-            data.convictionGrowth = conviction - baseConviction;
-            data.insightGrowth    = insight    - baseInsight;
-        };
+            data.sanityGrowth     = sanity     - b.sanity;
+            data.awarenessGrowth  = awareness  - b.awareness;
+            data.tenacityGrowth   = tenacity   - b.tenacity;
+            data.convictionGrowth = conviction - b.conviction;
+            data.insightGrowth    = insight    - b.insight;
+        }
 
         // 지갑(Memory) 정보 저장 — 항상 PlayerWallet 실제 값으로 저장
         var wallet = playerStats != null

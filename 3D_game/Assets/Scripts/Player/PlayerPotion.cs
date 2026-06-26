@@ -24,6 +24,8 @@ public class PlayerPotion : MonoBehaviour
     [Header("UI")]
     public TextMeshProUGUI currentPotionText;
 
+    private static readonly int AnimID_DoDrink = Animator.StringToHash("doDrink");
+
     private void Awake()
     {
         if(_stats == null || _controller == null || _animator == null)
@@ -92,7 +94,7 @@ public class PlayerPotion : MonoBehaviour
         _controller.ChangeState(PlayerState.UseItem);
 
         // B. 애니메이션 재생
-        if (_animator != null) _animator.SetTrigger("doDrink");
+        if (_animator != null) _animator.SetTrigger(AnimID_DoDrink);
 
         // C. 마시는 시간 대기 (애니메이션 길이만큼, 예: 1.5초)
         // ★ 더 정확하게 하려면 Animation Event를 써야 하지만, 코루틴이 편함
@@ -111,7 +113,7 @@ public class PlayerPotion : MonoBehaviour
         _controller.ChangeState(PlayerState.UseItem);
 
         // B. 애니메이션 재생
-        if (_animator != null) _animator.SetTrigger("doDrink");
+        if (_animator != null) _animator.SetTrigger(AnimID_DoDrink);
     }
     public void UpdateMaxPotions(int level)
     {

@@ -16,6 +16,8 @@ public class EnemyStats : CharacterStats
 
     private bool _isDead = false;
 
+    private static readonly int AnimID_DoDie = Animator.StringToHash("doDie");
+
     public override void Start()
     {
         base.Start(); // 부모의 Start (체력 초기화 등) 실행
@@ -43,8 +45,7 @@ public class EnemyStats : CharacterStats
         // 3. 사망 연출 (애니메이션)
         if (animator != null)
         {
-            animator.SetTrigger("doDie");
-            // 혹은 animator.SetBool("isDead", true);
+            animator.SetTrigger(AnimID_DoDie);
         }
 
         // 4. 물리 충돌 끄기 (시체가 길 막지 않게)

@@ -787,8 +787,6 @@ public class PlayerController : MonoBehaviour
                     if (myWeapon != null)
                     {
                         myWeapon.damageMultiplier = GetCurrentComboMultiplier();
-                        // 디버그용: 배율 확인
-                        // Debug.Log($"콤보 {_comboStep + 1}타! 데미지 배율: {myWeapon.damageMultiplier}x");
                     }
                     _comboInputReceived = false;
 

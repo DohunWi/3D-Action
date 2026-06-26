@@ -33,10 +33,12 @@ public class EliteEnemy : Enemy
     public FloorTeleporter doorScript;
 
     // 내부 상태 변수
-    private float _lastFireBreathTime; 
+    private float _lastFireBreathTime;
     private bool _isFireBreathing = false;
     private bool _isEnraged = false;
     private bool _hasBossFightStarted = false;
+
+    private static readonly int AnimID_DoRoar = Animator.StringToHash("doRoar");
 
     protected override void Start()
     {
@@ -118,7 +120,7 @@ public class EliteEnemy : Enemy
         // 3. (선택) 포효 한번 지르기
         if (!_isFireBreathing) // 이미 공격 중이 아니라면
         {
-            _animator.SetTrigger("doRoar"); // 등장 포효!
+            _animator.SetTrigger(AnimID_DoRoar); // 등장 포효!
             // ChangeState(EnemyState.Attack); // 강제로 공격 상태로 전환할 수도 있음
         }
     }
@@ -202,7 +204,7 @@ public class EliteEnemy : Enemy
         _agent.velocity = Vector3.zero;
 
         // 1. 애니메이션 재생 (이제 얘가 이벤트를 통해 OnFireBreathStart를 부를 겁니다)
-        _animator.SetTrigger("doRoar"); 
+        _animator.SetTrigger(AnimID_DoRoar);
 
         // 2. [준비 단계] 불 뿜기 시작할 때까지 대기
         // (안전장치: 2초가 지나도 이벤트가 안 불리면 강제 종료 -> 버그 방지)

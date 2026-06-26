@@ -47,26 +47,10 @@ public class Weapon : MonoBehaviour
     // ★ 이제 데미지나 소리는 weaponData에서 꺼내 씁니다.
     protected virtual void OnTriggerEnter(Collider other)
     {
-        if (weaponData == null) 
-        {
-            // Debug.Log($"{gameObject} : No Weapon Data");
-            return; // 데이터 없으면 작동 안 함
-        }
-        if (other.CompareTag(ownerTag)) 
-        {
-            // Debug.Log($"{gameObject} : Same Owner Tag");
-            return;
-        }
-        if (other.transform.root == transform.root) 
-        {
-            // Debug.Log($"{gameObject} : Same transform root");
-            return;
-        }
-        if (_alreadyHitList.Contains(other)) 
-        {
-            // Debug.Log($"{gameObject} : Already Hit");
-            return;
-        }
+        if (weaponData == null) return;                      // 데이터 없으면 작동 안 함
+        if (other.CompareTag(ownerTag)) return;              // 같은 진영(자기 무기 등)
+        if (other.transform.root == transform.root) return;  // 자기 자신
+        if (_alreadyHitList.Contains(other)) return;         // 이번 스윙에 이미 맞은 대상
         IDamageable target = other.GetComponent<IDamageable>();
         if (target != null)
         {
@@ -89,13 +73,6 @@ public class Weapon : MonoBehaviour
             }
             if (weaponData.impactVFX != null)
                 VFXPoolManager.Instance.PlayVFX(weaponData.impactVFX, transform.position + transform.forward, Quaternion.identity);
-  
-            // 
-            // Debug.Log($"[Weapon] 히트박스 켜짐! (GameObj: {gameObject.name})"); 
-        }
-        else
-        {
-            // Debug.LogError("[Weapon] 콜라이더가 연결되지 않았습니다!");
         }
     }
 

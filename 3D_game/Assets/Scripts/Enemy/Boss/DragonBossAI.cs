@@ -274,7 +274,7 @@ public class DragonBossAI : MonoBehaviour
                 break;
 
             case DragonState.FlyAttack:
-                _animator.SetInteger("attackIndex", currentAttackIndex);
+                _animator.SetInteger(AnimID_AttackIndex, currentAttackIndex);
                 _animator.SetTrigger(AnimID_DoFlyAttack);
                 _animator.SetFloat(AnimID_FlySpeed, 0f);
                 _animator.applyRootMotion = false;
@@ -320,7 +320,7 @@ public class DragonBossAI : MonoBehaviour
                 _isInCombo = false;
                 _backAwayIsRecovery = false;
                 _agent.enabled = false;
-                fireBreathVFX.SetActive(false);
+                fireBreathVFX?.SetActive(false);
                 // 만약 비행 중에 그로기가 걸렸다면 바닥으로 추락
                 if (isFlying)
                 {
@@ -722,8 +722,8 @@ public class DragonBossAI : MonoBehaviour
 
             // 일반 공격이면 애니메이션만 재트리거 (이미 GroundAttack 상태)
             currentAttackIndex = next;
-            _animator.SetInteger("attackIndex", currentAttackIndex);
-            _animator.SetTrigger("doAttack");
+            _animator.SetInteger(AnimID_AttackIndex, currentAttackIndex);
+            _animator.SetTrigger(AnimID_DoAttack);
             return;
         }
 

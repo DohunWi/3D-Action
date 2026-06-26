@@ -189,9 +189,6 @@ public class PlayerStats : CharacterStats
             currentLucidity = Mathf.Min(currentLucidity + lucidRegen * Time.deltaTime, maxLucidity);
             OnLucidityChanged?.Invoke(currentLucidity, maxLucidity);
         }
-
-        // (테스트용) 스태미나 수치 확인
-       // Debug.Log($"Stamina: {currentStamina:F1}");
     }
 
     // 마나 사용 함수
@@ -200,7 +197,6 @@ public class PlayerStats : CharacterStats
         if (currentLucidity >= amount)
         {
             currentLucidity -= amount;
-            // Debug.Log($"현재 마나: {currentMana:F1}");
             // ★ UI 알림
             OnLucidityChanged?.Invoke(currentLucidity, maxLucidity);
             return true;
@@ -214,7 +210,6 @@ public class PlayerStats : CharacterStats
         {
             currentVolition -= amount;
             _lastVolitionUseTime = Time.time; // 사용 시간 갱신 (회복 딜레이 리셋)
-            // Debug.Log($"현재 스태미나: {currentStamina:F1}");
             // ★ UI 알림
             OnVolitionChanged?.Invoke(currentVolition, maxVolition);
             return true;
@@ -235,7 +230,7 @@ public class PlayerStats : CharacterStats
             return; // 구르기 무적(i-frame)
         }
         // 2. 패링 시도
-        if (_playerController.currentState == PlayerState.Parry)
+        if (_playerController != null && _playerController.currentState == PlayerState.Parry)
         {
             if (attacker != null)
             {
