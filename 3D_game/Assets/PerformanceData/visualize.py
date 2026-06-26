@@ -107,7 +107,7 @@ def make_figure(files: list[str]):
         path = f if os.path.isabs(f) else os.path.join(SCRIPT_DIR, f)
         df   = load_csv(path)
         label = os.path.splitext(os.path.basename(path))[0]
-        datasets.append((label, df))
+        datasets.append((label, df, os.path.dirname(path)))
 
     fig, axes = plt.subplots(4, 1, figsize=(14, 13),
                              gridspec_kw={"hspace": 0.85})
@@ -124,7 +124,7 @@ def make_figure(files: list[str]):
     ax_fps, ax_ft, ax_gc, ax_heap = axes
     colors = [COLOR_BEFORE, COLOR_AFTER]
 
-    for (label, df), color in zip(datasets, colors):
+    for (label, df, _), color in zip(datasets, colors):
         plot_single(df, label, color, axes)
         print_summary(label, df)
 
@@ -167,8 +167,16 @@ def make_figure(files: list[str]):
     fig.suptitle(title, fontsize=13, color="white", y=1.005)
 
     # --- 저장 ---
-    out_name = "report_comparison.png" if len(datasets) == 2 else f"report_{datasets[0][0]}.png"
-    out_path = os.path.join(SCRIPT_DIR, out_name)
+    # 단일: CSV와 같은 서브디렉토리에 저장
+    # 비교: PerformanceData 루트에 저장
+    if len(datasets) == 1:
+        out_dir  = datasets[0][2]
+        out_name = f"report_{datasets[0][0]}.png"
+    else:
+        out_dir  = SCRIPT_DIR
+        out_name = "report_comparison.png"
+
+    out_path = os.path.join(out_dir, out_name)
     fig.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     print(f"\n✅ 저장 완료: {out_path}")
     plt.close(fig)
@@ -176,14 +184,22 @@ def make_figure(files: list[str]):
 
 def resolve_files(args: list[str]) -> list[str]:
     if args:
-        return args[:2]  # 최대 2개 (Before/After)
+        # 상대 경로면 SCRIPT_DIR 기준으로 해석, 서브디렉토리도 허용
+        resolved = []
+        for a in args[:2]:
+            path = a if os.path.isabs(a) else os.path.join(SCRIPT_DIR, a)
+            if not os.path.exists(path):
+                sys.exit(f"❌ 파일을 찾을 수 없습니다: {path}")
+            resolved.append(path)
+        return resolved
 
-    # 인수 없으면 가장 최근 CSV 자동 선택
-    csvs = sorted(glob.glob(os.path.join(SCRIPT_DIR, "perf_*.csv")))
+    # 인수 없으면 서브디렉토리 포함 가장 최근 CSV 자동 선택
+    csvs = sorted(glob.glob(os.path.join(SCRIPT_DIR, "**", "perf_*.csv"), recursive=True))
     if not csvs:
         sys.exit("❌ CSV 파일을 찾을 수 없습니다. PerformanceData 폴더에 CSV가 있는지 확인하세요.")
-    print(f"자동 선택: {os.path.basename(csvs[-1])}")
-    return [csvs[-1]]
+    latest = csvs[-1]
+    print(f"자동 선택: {os.path.relpath(latest, SCRIPT_DIR)}")
+    return [latest]
 
 
 if __name__ == "__main__":
