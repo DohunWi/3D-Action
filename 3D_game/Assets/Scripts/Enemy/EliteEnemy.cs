@@ -104,8 +104,7 @@ public class EliteEnemy : Enemy
     // 보스전 시작 함수
     private void StartBossFight()
     {
-        _hasBossFightStarted = true; // 이제 중복 실행 안 됨
-        Debug.Log("⚔️ BOSS FIGHT STARTED! ⚔️");
+        _hasBossFightStarted = true; // 이제 중복 실행 안 됨;
 
         // 1. UI 켜기 (페이드 인)
         if (bossEgoBar != null && _stats != null)
@@ -125,8 +124,7 @@ public class EliteEnemy : Enemy
     }
     private void EndBossFight()
     {
-        _hasBossFightStarted = false; // 플래그 리셋 (다시 마주치면 UI 띄우기 위해)
-        Debug.Log("💤 BOSS FIGHT ENDED (Player ran away)");
+        _hasBossFightStarted = false; // 플래그 리셋 (다시 마주치면 UI 띄우기 위해);
 
         // 1. UI 숨기기 (페이드 아웃)
         if (bossEgoBar != null)
@@ -297,7 +295,6 @@ public class EliteEnemy : Enemy
         // 3. 강인도 즉시 회복 (마지막 기회)
         // if (_stats != null) _stats.ResetPoise(); // ResetPoise 함수가 있다면 사용
 
-        Debug.Log($"⚠️ ELITE ENRAGED! Speed x{speedBuff}");
     }
 
     // 엘리트 사망 연출 (슬로우 모션)

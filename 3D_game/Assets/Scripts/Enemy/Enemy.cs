@@ -72,6 +72,9 @@ public class Enemy : MonoBehaviour
     public float minIdleTime = 5f;
     public float maxIdleTime = 10f;
     private float _idleTimer;
+
+    // 🩸 피격 플래시용 — Awake에서 캐싱, FlashRed마다 재할당 방지
+    private Renderer[] _renderers;
     
     // Animation IDs (성능 최적화)
     private static readonly int AnimID_Speed = Animator.StringToHash("speed");
@@ -86,6 +89,7 @@ public class Enemy : MonoBehaviour
         _agent = GetComponent<NavMeshAgent>();
         _animator = GetComponent<Animator>();
         _stats = GetComponent<CharacterStats>();
+        _renderers = GetComponentsInChildren<Renderer>();
     }
 
     protected virtual void Start()
@@ -469,17 +473,15 @@ public class Enemy : MonoBehaviour
     }
     private IEnumerator FlashRed()
     {
-        Renderer[] renderers = GetComponentsInChildren<Renderer>();
-        foreach (var r in renderers) r.material.color = Color.red;
+        foreach (var r in _renderers) r.material.color = Color.red;
         yield return new WaitForSeconds(0.1f);
-        foreach (var r in renderers) r.material.color = Color.white;
+        foreach (var r in _renderers) r.material.color = Color.white;
     }
     // ----------------------------------
     public void GetParried()
     {
         if (currentState == EnemyState.Die) return;
         // 패링은 강인도 무시하고 무조건 걸림
-        Debug.Log($"{gameObject.name}: 으악! 패링당했다!");
         ChangeState(EnemyState.Parried);
     }
     public void KnockDown()

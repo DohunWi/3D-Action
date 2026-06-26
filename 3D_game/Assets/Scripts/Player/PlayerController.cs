@@ -97,6 +97,10 @@ public class PlayerController : MonoBehaviour
     private static readonly int AnimID_InputX = Animator.StringToHash("InputX");
     private static readonly int AnimID_InputY = Animator.StringToHash("InputY");
     private static readonly int AnimID_IsCountering = Animator.StringToHash("isCountering");
+
+    // 스킬 범위 판정 버퍼 (매 시전마다 할당 방지)
+    private readonly Collider[] _skillHitBuffer = new Collider[20];
+    private readonly HashSet<CharacterStats> _skillHitSet = new HashSet<CharacterStats>();
     private int AnimID_SkillAnimHash;
 
     private void Awake()
@@ -113,9 +117,13 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         initialDamage = myWeapon.damage; // 초기 데미지 저장
+
+        if (activeSkill?.impactVFX != null && VFXPoolManager.Instance != null)
+            VFXPoolManager.Instance.WarmUp(activeSkill.impactVFX, 3);
     }
     private void OnEnable()
     {
+        if (_inputActions == null) return;
         _inputActions.Player.Enable();
         _inputActions.Player.Jump.performed += OnJump;
         _inputActions.Player.Attack.performed += OnAttack;
@@ -134,6 +142,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_inputActions == null) return;
         _inputActions.Player.Disable();
         _inputActions.Player.Jump.performed -= OnJump;
         _inputActions.Player.Attack.performed -= OnAttack;
@@ -563,7 +572,6 @@ public class PlayerController : MonoBehaviour
                 // "지금 당장 안 깎고, 나중에 때릴 때 깎을게. 근데 잔고는 있지?"
                 if (_stats.HasVolition(attackVolitionCost)) 
                 {
-                    Debug.Log("콤보 예약됨 (스태미나 아직 안 깎음)");
                     _comboInputReceived = true;
                 }
             }
@@ -597,7 +605,6 @@ public class PlayerController : MonoBehaviour
         // 1. 쿨타임 체크
         if (Time.time < _lastSkillTime + activeSkill.cooldown)
         {
-            Debug.Log($"스킬 쿨타임! ({_lastSkillTime + activeSkill.cooldown - Time.time:F1}초 남음)");
             return;
         }
         // 스킬 트리거 가져오기
@@ -630,8 +637,8 @@ public class PlayerController : MonoBehaviour
         if (myWeapon != null) finalDamage += myWeapon.damage;
 
        // 1. 타격/폭발 이펙트 (내 위치 혹은 타겟 위치)
-        if (activeSkill.impactVFX != null)
-             Instantiate(activeSkill.impactVFX, transform.position + transform.forward, Quaternion.identity);
+        if (activeSkill.impactVFX != null && VFXPoolManager.Instance != null)
+            VFXPoolManager.Instance.PlayVFX(activeSkill.impactVFX, transform.position + transform.forward, Quaternion.identity);
 
         // 2. ★ 타격 사운드 재생 
         if (activeSkill.impactSound != null)
@@ -646,12 +653,12 @@ public class PlayerController : MonoBehaviour
         // 4. 범위 공격 판정 (데이터의 반경 사용)
         // GetComponentInParent로 부모까지 탐색 → 보스 hurtbox처럼 자식 콜라이더도 인식
         // HashSet으로 같은 대상 중복 피격 방지
-        Collider[] hitColliders = Physics.OverlapSphere(transform.position, activeSkill.impactRadius);
-        var alreadyHit = new HashSet<CharacterStats>();
-        foreach (var hit in hitColliders)
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, activeSkill.impactRadius, _skillHitBuffer);
+        _skillHitSet.Clear();
+        for (int i = 0; i < hitCount; i++)
         {
-            var enemyStats = hit.GetComponentInParent<CharacterStats>();
-            if (enemyStats != null && enemyStats.CompareTag("Enemy") && alreadyHit.Add(enemyStats))
+            var enemyStats = _skillHitBuffer[i].GetComponentInParent<CharacterStats>();
+            if (enemyStats != null && enemyStats.CompareTag("Enemy") && _skillHitSet.Add(enemyStats))
             {
                 enemyStats.TakeDamage(finalDamage, activeSkill.composureDamage, transform);
             }
@@ -669,7 +676,6 @@ public class PlayerController : MonoBehaviour
     // ★ Stats에서 패링 성공 시 호출할 함수
     public void OnParrySuccess()
     {
-        Debug.Log("<color=yellow>반격 기회 포착! (Counter Ready)</color>");
         _canCounterAttack = true;
         
         if (parrySound != null)
@@ -683,7 +689,6 @@ public class PlayerController : MonoBehaviour
     private void ResetCounterWindow()
     {
         _canCounterAttack = false;
-        Debug.Log("반격 기회 종료...");
     }
 
     // --- 피격 및 무적 로직 ---
@@ -695,8 +700,7 @@ public class PlayerController : MonoBehaviour
         // ★ [핵심] 구르기 상태라면 무적! (데미지/피격모션 무시)
         if (currentState == PlayerState.Roll)
         {
-            Debug.Log("구르기 무적(i-frame)으로 회피했습니다!");
-            return;
+            return; // 구르기 무적(i-frame)
         }
 
         // 그 외 상태면 피격 처리
@@ -794,7 +798,6 @@ public class PlayerController : MonoBehaviour
                 else
                 {
                     // 결제 실패 (예약은 했는데 막상 때리려니 스태미나 부족) -> 공격 중단
-                    Debug.Log("스태미나 부족으로 콤보 중단!");
                     _comboStep = 0;
                     ChangeState(PlayerState.Locomotion);
                 }

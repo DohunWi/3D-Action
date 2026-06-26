@@ -133,9 +133,20 @@ public class DragonBossAI : MonoBehaviour
     private float _currentCooldown;
 
     // 1. 애니메이션 파라미터 해시값 (성능 최적화)
-    private static readonly int AnimID_Speed = Animator.StringToHash("speed");
-    private static readonly int AnimID_FlySpeed = Animator.StringToHash("flySpeed");
-    private static readonly int AnimID_DoBackAway = Animator.StringToHash("doBackAway");
+    private static readonly int AnimID_Speed        = Animator.StringToHash("speed");
+    private static readonly int AnimID_FlySpeed     = Animator.StringToHash("flySpeed");
+    private static readonly int AnimID_DoBackAway   = Animator.StringToHash("doBackAway");
+    private static readonly int AnimID_DoRecover    = Animator.StringToHash("doRecover");
+    private static readonly int AnimID_AttackIndex  = Animator.StringToHash("attackIndex");
+    private static readonly int AnimID_DoAttack     = Animator.StringToHash("doAttack");
+    private static readonly int AnimID_DoTakeOff    = Animator.StringToHash("doTakeOff");
+    private static readonly int AnimID_IsFlying     = Animator.StringToHash("isFlying");
+    private static readonly int AnimID_DoFlyAttack  = Animator.StringToHash("doFlyAttack");
+    private static readonly int AnimID_DoLand       = Animator.StringToHash("doLand");
+    private static readonly int AnimID_DoLandGroggy = Animator.StringToHash("doLandGroggy");
+    private static readonly int AnimID_DoGroggy     = Animator.StringToHash("doGroggy");
+    private static readonly int AnimID_DoScream     = Animator.StringToHash("doScream");
+    private static readonly int AnimID_DoDie        = Animator.StringToHash("doDie");
     private void Awake()
     {
         if (_agent == null) _agent = GetComponent<NavMeshAgent>();
@@ -169,6 +180,9 @@ public class DragonBossAI : MonoBehaviour
         _walkSpeed = walkSpeed;
         _runSpeed  = runSpeed;
         _agent.speed = _runSpeed;
+
+        if (spikePrefab != null && NightmareSpikePool.Instance != null)
+            NightmareSpikePool.Instance.WarmUp(spikePrefab, 4);
     }
 
     private void Update()
@@ -217,7 +231,7 @@ public class DragonBossAI : MonoBehaviour
             case DragonState.FlyHover:
                 // 공중 체공 종료
             case DragonState.Groggy:
-                _animator.SetTrigger("doRecover");
+                _animator.SetTrigger(AnimID_DoRecover);
                 break;
         }
 
@@ -241,8 +255,8 @@ public class DragonBossAI : MonoBehaviour
                 if (_agent.enabled) _agent.isStopped = true;
                 _animator.SetFloat(AnimID_Speed, 0f);
                 // 애니메이션 파라미터 전달
-                _animator.SetInteger("attackIndex", currentAttackIndex);
-                _animator.SetTrigger("doAttack");
+                _animator.SetInteger(AnimID_AttackIndex, currentAttackIndex);
+                _animator.SetTrigger(AnimID_DoAttack);
                 break;
 
             case DragonState.TakeOff:
@@ -250,18 +264,18 @@ public class DragonBossAI : MonoBehaviour
                 isFlying = true;
                 _agent.enabled = false;
                 _animator.SetFloat(AnimID_Speed, 0f);
-                _animator.SetTrigger("doTakeOff");
+                _animator.SetTrigger(AnimID_DoTakeOff);
                 sfx?.OnTakeOff();
                 break;
 
             case DragonState.FlyHover:
-                _animator.SetBool("isFlying", true);
+                _animator.SetBool(AnimID_IsFlying, true);
                 sfx?.StartWingFlapLoop();
                 break;
 
             case DragonState.FlyAttack:
                 _animator.SetInteger("attackIndex", currentAttackIndex);
-                _animator.SetTrigger("doFlyAttack");
+                _animator.SetTrigger(AnimID_DoFlyAttack);
                 _animator.SetFloat(AnimID_FlySpeed, 0f);
                 _animator.applyRootMotion = false;
                 // ★ 3번(활강) 패턴일 경우 돌진 목표 좌표 계산
@@ -296,8 +310,8 @@ public class DragonBossAI : MonoBehaviour
 
             case DragonState.Land:
                 isFlying = false;
-                _animator.SetBool("isFlying", false);
-                _animator.SetTrigger("doLand");
+                _animator.SetBool(AnimID_IsFlying, false);
+                _animator.SetTrigger(AnimID_DoLand);
                 sfx?.StopWingFlapLoop();
                 break;
 
@@ -314,14 +328,14 @@ public class DragonBossAI : MonoBehaviour
                     isGliding = false;
                     StopAllCoroutines(); // 기존 비행/공격 루틴 중단
                     // 바닥 충돌 시 연출
-                    _animator.SetTrigger("doLandGroggy"); // 바닥에 처박히는 전용 애니메이션
-                    _animator.SetBool("isFlying", false);
+                    _animator.SetTrigger(AnimID_DoLandGroggy); // 바닥에 처박히는 전용 애니메이션
+                    _animator.SetBool(AnimID_IsFlying, false);
                     sfx?.StopWingFlapLoop();
                     StartCoroutine(FallToGround());
                 }
                 else
                 {
-                    _animator.SetTrigger("doGroggy");
+                    _animator.SetTrigger(AnimID_DoGroggy);
                     sfx?.OnGroggy();
                     // 지상 그로기일 경우 단순히 일정 시간 후 회복
                     StartCoroutine(RecoverFromGroggy());
@@ -342,7 +356,7 @@ public class DragonBossAI : MonoBehaviour
             if (bossEgoBar != null) bossEgoBar.Initialize(_stats, bossName);
             
             // 전투 시작 시 포효 연출 후 추격
-            _animator.SetTrigger("doScream");
+            _animator.SetTrigger(AnimID_DoScream);
             sfx?.OnRoar();
             SoundManager.Instance?.PlayBGM(phase1BGM, bgmFadeDuration);
             Invoke(nameof(StartChase), 3.0f);
@@ -821,7 +835,7 @@ public class DragonBossAI : MonoBehaviour
             StopAllCoroutines();
             if (_agent.enabled) _agent.isStopped = true;
 
-            _animator.SetTrigger("doScream");
+            _animator.SetTrigger(AnimID_DoScream);
             sfx?.OnRoar();
             SoundManager.Instance?.CrossFadeBGM(phase2BGM, bgmFadeDuration);
             lastFlightTime = Time.time - flightCooldown;
@@ -893,8 +907,10 @@ public class DragonBossAI : MonoBehaviour
             return; // 바닥이 없는 허공이면 생성 안 함
 
         Vector3 spawnPos = groundHit.point + Vector3.up * spikeYOffset;
-        Instantiate(spikePrefab, spawnPos, Quaternion.identity)
-            .GetComponent<NightmareSpike>()?.Setup(hurtboxes[1]);
+        NightmareSpike spike = NightmareSpikePool.Instance != null
+            ? NightmareSpikePool.Instance.Get(spikePrefab, spawnPos, Quaternion.identity)
+            : Instantiate(spikePrefab, spawnPos, Quaternion.identity).GetComponent<NightmareSpike>();
+        spike?.Setup(hurtboxes[1]);
         sfx?.OnSpikeSpawn();
     }
     
@@ -935,7 +951,7 @@ public class DragonBossAI : MonoBehaviour
         _backAwayIsRecovery = false;
         ChangeState(DragonState.Die);
         _agent.enabled = false;
-        _animator.SetTrigger("doDie");
+        _animator.SetTrigger(AnimID_DoDie);
         fireBreathVFX?.SetActive(false);
         sfx?.OnBreathEnd();
         sfx?.StopWingFlapLoop();

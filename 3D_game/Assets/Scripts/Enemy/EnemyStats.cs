@@ -86,9 +86,6 @@ public class EnemyStats : CharacterStats
         if (dropItemPrefab != null && Random.value <= dropChance)
         {
             Instantiate(dropItemPrefab, transform.position + Vector3.up * 0.5f, Quaternion.identity);
-            Debug.Log("아이템 드랍 성공!");
         }
-
-        Debug.Log($"[Enemy] 보상 지급 완료: EXP +{expReward}, Mem +{memoryReward}");
     }
 }

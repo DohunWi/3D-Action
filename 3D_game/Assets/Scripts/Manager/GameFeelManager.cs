@@ -61,6 +61,7 @@ public class GameFeelManager : MonoBehaviour
 
     private IEnumerator LoopShakeRoutine(float force, float interval)
     {
+        var wait = new WaitForSeconds(interval);
         while (true)
         {
             if (impulseSource != null)
@@ -73,7 +74,7 @@ public class GameFeelManager : MonoBehaviour
                 );
                 impulseSource.GenerateImpulse(randomDir.normalized * force);
             }
-            yield return new WaitForSeconds(interval);
+            yield return wait;
         }
     }
 

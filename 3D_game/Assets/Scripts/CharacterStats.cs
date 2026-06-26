@@ -50,7 +50,6 @@ public class CharacterStats : MonoBehaviour, IDamageable
         if (currentEgo <= 0) return; // 이미 죽었으면 무시
 
         currentEgo -= damage;
-        Debug.Log($"[{gameObject.name}][Stats] 남은 체력: {currentEgo}");
 
         // ★ 데미지 입을 때마다 UI 갱신 알림
         OnEgoChanged?.Invoke(currentEgo, maxEgo);
@@ -80,25 +79,13 @@ public class CharacterStats : MonoBehaviour, IDamageable
         // ====================================================
 
         // ★ 데미지 팝업 생성
-        if (damagePopupPrefab != null)
+        if (damagePopupPrefab != null && DamagePopupPool.Instance != null)
         {
-            // 1. 프리팹 생성 (내 머리 위쯤)
-            // Quaternion.identity = 회전 없음 (빌보드 처리 안 하면 글씨가 돌아가 있을 수 있음)
-            // 해결법: 생성 후 카메라를 보게 하거나, 아래 빌보드 팁 참고
-            Vector3 spawnPos = transform.position + Vector3.up * 1.5f + Vector3.forward*0.4f; // 머리 높이
-            
-            
-            // 약간 랜덤한 위치에 띄우기 (겹침 방지)
+            Vector3 spawnPos = transform.position + Vector3.up * 1.5f + Vector3.forward * 0.4f;
             spawnPos.x += UnityEngine.Random.Range(-0.5f, 0.5f);
-            
-            GameObject popup = Instantiate(damagePopupPrefab, spawnPos, Quaternion.identity);
-            
-            // 2. 데미지 수치 전달
-            var popupScript = popup.GetComponent<DamagePopup>();
-            if (popupScript != null)
-            {
-                popupScript.Setup(damage);
-            }
+
+            DamagePopup popup = DamagePopupPool.Instance.Get(damagePopupPrefab, spawnPos);
+            popup.Setup(damage);
         }
 
         if (currentEgo <= 0)
@@ -114,7 +101,6 @@ public class CharacterStats : MonoBehaviour, IDamageable
 
     protected virtual void Die(Transform attacker)
     {
-        Debug.Log($"<color=red>{gameObject.name} 사망!</color>");
         OnDeath?.Invoke(); // "나 죽었어!" 방송 송출
         // ====================================================
         // 사망 사운드 재생
