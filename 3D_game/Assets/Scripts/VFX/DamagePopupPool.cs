@@ -53,4 +53,16 @@ public class DamagePopupPool : MonoBehaviour
         popup.transform.SetParent(_poolRoot);
         _pool.Enqueue(popup);
     }
+
+    public void WarmUp(GameObject prefab, int count)
+    {
+        if (_pool.Count >= count) return; // 이미 충분하면 skip
+        int toCreate = count - _pool.Count;
+        for (int i = 0; i < toCreate; i++)
+        {
+            GameObject obj = Instantiate(prefab, _poolRoot);
+            obj.SetActive(false);
+            _pool.Enqueue(obj.GetComponent<DamagePopup>());
+        }
+    }
 }

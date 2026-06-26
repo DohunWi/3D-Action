@@ -31,6 +31,9 @@ public class CharacterStats : MonoBehaviour, IDamageable
         currentEgo = maxEgo;
         _currentComposure = maxComposure;
         OnEgoChanged?.Invoke(currentEgo, maxEgo);
+
+        if (damagePopupPrefab != null && DamagePopupPool.Instance != null)
+            DamagePopupPool.Instance.WarmUp(damagePopupPrefab, 5);
     }
     public virtual void Update()
     {
