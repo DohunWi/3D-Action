@@ -9360,7 +9360,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &430258388
 Transform:
   m_ObjectHideFlags: 0
@@ -23505,6 +23505,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PerformanceLogger
   sampleInterval: 1
   maxSamples: 0
+  uncapFrameRateForTest: 1
 --- !u!4 &1083666440 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4154805912814374884, guid: aef0c05ee60182c40b56f85304a84027, type: 3}
