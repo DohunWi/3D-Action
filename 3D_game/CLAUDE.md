@@ -139,6 +139,43 @@ enum EnemyState { Idle, Patrol, Chase, Attack, Parried, Hit, Down, Die }
 5. **ScriptableObject로 밸런싱** — 무기/스킬 수치는 코드 하드코딩 말고 SO 활용
 6. **한국어 주석 허용** — 프로젝트 전반에 한국어 주석 사용 중이므로 유지
 
+### GC 0B 컨벤션 (핫패스)
+
+Update/물리/전투 등 매 프레임·고빈도 경로에서는 힙 할당을 만들지 않는다.
+
+- **핫패스 `Debug.Log` 금지** — `StackTraceUtility` 할당 유발. 디버그는 가드(`#if`)로 감쌀 것
+- **컴포넌트/카메라 캐싱** — `Camera.main`, `GetComponent*`는 `Awake`에서 1회 캐싱
+- **Alloc-free API** — `Physics.OverlapSphereNonAlloc` + 재사용 버퍼, `WaitForSeconds` 코루틴 밖 캐싱, `HashSet`은 `Clear()` 재사용
+- **풀링 우선** — `Instantiate`/`Destroy` 반복 대신 풀 사용 (아래 참조)
+
+---
+
+## 성능 측정 & 최적화 인프라
+
+### 측정 도구
+| 파일 | 역할 |
+|------|------|
+| `Assets/Scripts/Manager/PerformanceLogger.cs` | 매 프레임 누적 → avg/max/**p95** 프레임타임, `ProfilerRecorder`로 프레임당 GC 바이트, 메모리를 CSV 저장 |
+| `Assets/Scripts/Manager/PerformanceHUD.cs` | 인게임 FPS·Heap·GC 오버레이 |
+| `Assets/PerformanceData/visualize.py` | matplotlib 리포트 (FPS/프레임타임/GC/메모리) + Before/After 비교·개선율 |
+
+### 측정 워크플로우
+- **GC 검증 → 개발 빌드** (또는 에디터). 릴리즈는 Profiler 비활성으로 `ProfilerRecorder "GC Allocated In Frame"`이 **항상 0** 반환 → GC 측정 불가
+- **FPS/프레임타임 공식 비교 → 릴리즈 빌드** (Profiler 오버헤드 없음). `ENABLE_PERF_LOG` define 필요
+- CSV 저장 경로: 에디터 `Assets/PerformanceData/<timestamp>/`, 빌드 `persistentDataPath/<timestamp>/`
+- 데이터는 버전 디렉토리로 보관: `vX.Y.Z_Release/`, `vX.Y.Z_DevBuild/`, 비교 그래프는 `Comparison/`
+- 비교 실행: `python3 visualize.py "before.csv=v0.0.0" "after.csv=v1.0.0"`
+
+### Object Pool 3종 (확장 시 패턴 통일)
+| 풀 | 대상 |
+|----|------|
+| `VFXPoolManager` | 폭발·타격·획득 등 VFX |
+| `Assets/Scripts/VFX/DamagePopupPool.cs` | 데미지 팝업 |
+| `Assets/Scripts/Enemy/Boss/NightmareSpikePool.cs` | 보스 가시 |
+
+- 모두 Singleton + `DontDestroyOnLoad`, `WarmUp(n)`으로 사전 생성 (중복 가드로 1회만)
+- 풀 반환은 `Destroy` 대신 `Return()`. 신규 풀도 이 규약 따를 것
+
 ---
 
 ## 사용 에셋/플러그인

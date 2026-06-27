@@ -91,7 +91,7 @@ def print_summary(label: str, df: pd.DataFrame):
     print(f"  Total Mem 평균     : {df['TotalMemMB'].mean():.0f} MB")
 
 
-def plot_single(df: pd.DataFrame, label: str, color: str, axes):
+def plot_single(df: pd.DataFrame, label: str, color: str, axes, marker: str = "o"):
     ax_fps, ax_ft, ax_gc, ax_heap = axes
     t = df["Elapsed_s"]
 
@@ -103,9 +103,12 @@ def plot_single(df: pd.DataFrame, label: str, color: str, axes):
     ax_ft.plot(t, df["AvgFrameMs"], color=color, lw=1.4, label=f"{label} avg")
     ax_ft.fill_between(t, df["AvgFrameMs"], df["MaxFrameMs"],
                        color=color, alpha=0.12, label=f"{label} avg→max")
+    # 스파이크 마커는 데이터셋 색상 + 고유 모양으로 두 버전 구분
     spikes = df[df["MaxFrameMs"] > SPIKE_MS]
     ax_ft.scatter(spikes["Elapsed_s"], spikes["MaxFrameMs"],
-                  color=COLOR_SPIKE, s=35, zorder=5, label=f"스파이크 ({len(spikes)})")
+                  color=color, marker=marker, s=45, zorder=5,
+                  edgecolors="white", linewidths=0.6,
+                  label=f"{label} 스파이크 ({len(spikes)})")
 
     # --- GC per frame (B) — 0에 붙어야 "GC 0B" 달성 ---
     gc_color = COLOR_GC if color == COLOR_BEFORE else "#a0d0a0"
@@ -144,10 +147,11 @@ def make_figure(files: list[str]):
             spine.set_edgecolor("#444466")
 
     ax_fps, ax_ft, ax_gc, ax_heap = axes
-    colors = [COLOR_BEFORE, COLOR_AFTER]
+    colors  = [COLOR_BEFORE, COLOR_AFTER]
+    markers = ["o", "^"]   # 데이터셋별 스파이크 마커 모양 (원 / 삼각형)
 
-    for (label, df, _, _), color in zip(datasets, colors):
-        plot_single(df, label, color, axes)
+    for (label, df, _, _), color, marker in zip(datasets, colors, markers):
+        plot_single(df, label, color, axes, marker)
         print_summary(label, df)
 
     # 범례는 플롯 밖 오른쪽에 배치 (데이터 가림 방지)
