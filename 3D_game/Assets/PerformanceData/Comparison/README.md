@@ -1,14 +1,14 @@
 # 성능 최적화 Before / After 비교
 
 측정일: 2026-06-27
-- **Before**: `bfb43ec` (최적화 직전, 로거만 신규 버전 이식)
-- **After**: 최적화 완료 (URP Shadow/SSAO, VFX Overdraw, GC 풀링·캐싱)
+- **v0.0.0 (Before)**: `bfb43ec` (최적화 직전, 로거만 신규 버전 이식)
+- **v1.0.0 (After)**: 최적화 완료 (URP Shadow/SSAO, VFX Overdraw, GC 풀링·캐싱)
 - 동일 동선·시간(~80–90초), 동일 측정 도구(`PerformanceLogger`)
 
 ## 핵심 수치
 
-| 지표 | Before | After | 개선 |
-|------|--------|-------|------|
+| 지표 | v0.0.0 | v1.0.0 | 개선 |
+|------|--------|--------|------|
 | 평균 FPS (릴리즈) | 94 | 152 | **+62%** |
 | 평균 FrameTime (릴리즈) | 11.1 ms | 6.9 ms | **-38%** |
 | p95 FrameTime (릴리즈) | 12.8 ms | 7.5 ms | **-41%** |
@@ -24,8 +24,25 @@
 - 개발 빌드 GC 잔여분(After ~190B)은 측정 도구 자체(TMP HUD·PerformanceLogger)의
   할당이며, 게임 로직 GC 는 Profiler "Top GC contributors" 분석상 사실상 0B.
 
-## 파일
+## 디렉토리 구조
 
-- `compare_release_fps_frametime.png` — 릴리즈 빌드 Before/After (FPS·FrameTime)
-- `compare_dev_gc.png` — 개발 빌드 Before/After (GC per frame)
-- 원본 CSV: `../Before_Release/`, `../Before_DevBuild/`, `../After_GC_Release/`, `../After_GC_DevBuild/`
+```
+PerformanceData/
+├── v0.0.0_Release/   v0.0.0_release.csv   (94 FPS / 11.1ms)
+├── v0.0.0_DevBuild/  v0.0.0_dev.csv       (GCAvg 454B)
+├── v1.0.0_Release/   v1.0.0_release.csv   (152 FPS / 6.9ms)
+├── v1.0.0_DevBuild/  v1.0.0_dev.csv       (GCAvg 190B)
+└── Comparison/
+    ├── compare_v0.0.0_release_vs_v1.0.0_release.png   (FPS·FrameTime)
+    └── compare_v0.0.0_dev_vs_v1.0.0_dev.png           (GC per frame)
+```
+
+## 재생성 방법
+
+```bash
+cd Assets/PerformanceData
+# 릴리즈 비교 (FPS/FrameTime)
+python3 visualize.py "v0.0.0_Release/v0.0.0_release.csv=v0.0.0" "v1.0.0_Release/v1.0.0_release.csv=v1.0.0"
+# 개발 비교 (GC)
+python3 visualize.py "v0.0.0_DevBuild/v0.0.0_dev.csv=v0.0.0" "v1.0.0_DevBuild/v1.0.0_dev.csv=v1.0.0"
+```

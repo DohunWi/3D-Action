@@ -2,8 +2,13 @@
 Lucid Knight — Performance Data Visualizer
 사용법:
   python visualize.py                          # 가장 최근 CSV 자동 선택
-  python visualize.py perf_before.csv          # 특정 파일 단독 분석
-  python visualize.py perf_before.csv perf_after.csv  # Before/After 비교
+  python visualize.py before_release.csv        # 특정 파일 단독 분석
+  python visualize.py before_release.csv after_release.csv   # Before/After 비교
+
+라벨/범례는 파일명에서 자동 추론한다. 파일명에 before/after, release/dev 가
+들어있으면 "Before (Release)" 같은 보기 좋은 라벨로 변환된다.
+명시적으로 지정하려면  파일경로=라벨  형식을 쓸 수 있다:
+  python visualize.py before_dev.csv=v0.0.0 after_dev.csv=v1.0.0
 """
 
 import sys
@@ -39,6 +44,17 @@ COLOR_AFTER  = "#52aae0"
 COLOR_SPIKE  = "#ff4444"
 COLOR_GC     = "#f0a030"
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def pretty_label(raw: str) -> str:
+    """파일명에서 보기 좋은 라벨 추론 (before_release → 'Before (Release)')"""
+    s = raw.lower()
+    if   "before" in s: phase = "Before"
+    elif "after"  in s: phase = "After"
+    else:               return raw            # 추론 불가 시 원본 유지
+    if   "release" in s: return f"{phase} (Release)"
+    elif "dev"     in s: return f"{phase} (Dev)"
+    return phase
 
 
 def load_csv(path: str) -> pd.DataFrame:
@@ -104,10 +120,16 @@ def plot_single(df: pd.DataFrame, label: str, color: str, axes):
 def make_figure(files: list[str]):
     datasets = []
     for f in files:
-        path = f if os.path.isabs(f) else os.path.join(SCRIPT_DIR, f)
+        # "경로=라벨" 형식 지원 (라벨 미지정 시 파일명에서 추론)
+        if "=" in f:
+            raw_path, explicit_label = f.split("=", 1)
+        else:
+            raw_path, explicit_label = f, None
+        path = raw_path if os.path.isabs(raw_path) else os.path.join(SCRIPT_DIR, raw_path)
         df   = load_csv(path)
-        label = os.path.splitext(os.path.basename(path))[0]
-        datasets.append((label, df, os.path.dirname(path)))
+        stem  = os.path.splitext(os.path.basename(path))[0]
+        label = explicit_label or pretty_label(stem)
+        datasets.append((label, df, os.path.dirname(path), stem))
 
     fig, axes = plt.subplots(4, 1, figsize=(14, 13),
                              gridspec_kw={"hspace": 0.85})
@@ -124,11 +146,14 @@ def make_figure(files: list[str]):
     ax_fps, ax_ft, ax_gc, ax_heap = axes
     colors = [COLOR_BEFORE, COLOR_AFTER]
 
-    for (label, df, _), color in zip(datasets, colors):
+    for (label, df, _, _), color in zip(datasets, colors):
         plot_single(df, label, color, axes)
         print_summary(label, df)
 
-    leg_kw = dict(facecolor="#1a1a2e", labelcolor="white", fontsize=9)
+    # 범례는 플롯 밖 오른쪽에 배치 (데이터 가림 방지)
+    leg_kw = dict(facecolor="#1a1a2e", labelcolor="white", fontsize=8,
+                  loc="upper left", bbox_to_anchor=(1.01, 1.0),
+                  framealpha=0.9, edgecolor="#444466")
 
     # --- 평균 FPS ---
     ax_fps.set_title("Average FPS  (구간 평균)", fontsize=12, pad=6)
@@ -156,26 +181,50 @@ def make_figure(files: list[str]):
     ax_gc.legend(**leg_kw)
     ax_gc.tick_params(labelbottom=False)
 
+    # 릴리즈 빌드는 Profiler 비활성 → GC 카운터가 항상 0 (측정 불가) 안내
+    if all(df["GCMaxPerFrame_B"].max() == 0 for _, df, _, _ in datasets):
+        ax_gc.text(0.5, 0.5,
+                   "릴리즈 빌드: Profiler 비활성으로 GC 측정 불가\nGC 비교는 개발 빌드(Dev) 리포트 참고",
+                   transform=ax_gc.transAxes, ha="center", va="center",
+                   color="#ffcc66", fontsize=11, alpha=0.9)
+
     # --- Total Memory (맨 아래만 x축 레이블 표시) ---
     ax_heap.set_title("Total Allocated Memory (MB)", fontsize=12, pad=6)
     ax_heap.set_ylabel("MB", fontsize=10)
     ax_heap.set_xlabel("Elapsed (s)", fontsize=11)
     ax_heap.legend(**leg_kw)
 
-    # --- 타이틀 ---
-    mode   = "Before vs After" if len(datasets) == 2 else datasets[0][0]
-    title  = f"Lucid Knight — Performance Report  [{mode}]"
-    fig.suptitle(title, fontsize=13, color="white", y=1.005)
+    # --- 타이틀 + 개선율 요약 ---
+    if len(datasets) == 2:
+        (lbl_b, df_b, _, _), (lbl_a, df_a, _, _) = datasets[0], datasets[1]
+        title = f"Lucid Knight — Performance Report  [{lbl_b} → {lbl_a}]"
+
+        def pct(before, after):
+            return (after - before) / before * 100 if before else 0.0
+        fps_b, fps_a = df_b["AvgFPS"].mean(),     df_a["AvgFPS"].mean()
+        ft_b,  ft_a  = df_b["AvgFrameMs"].mean(), df_a["AvgFrameMs"].mean()
+        deltas = (f"FPS {fps_b:.0f} → {fps_a:.0f} ({pct(fps_b, fps_a):+.0f}%)    "
+                  f"FrameTime {ft_b:.1f} → {ft_a:.1f} ms ({pct(ft_b, ft_a):+.0f}%)")
+        # GC는 측정된 경우(개발 빌드)만 표시
+        if df_b["GCMaxPerFrame_B"].max() > 0 or df_a["GCMaxPerFrame_B"].max() > 0:
+            gc_b, gc_a = df_b["GCAvgPerFrame_B"].mean(), df_a["GCAvgPerFrame_B"].mean()
+            deltas += f"    GC/frame {gc_b:.0f} → {gc_a:.0f} B ({pct(gc_b, gc_a):+.0f}%)"
+        fig.text(0.5, 0.975, deltas, ha="center", va="top",
+                 color="#9fe6b0", fontsize=11, fontweight="bold")
+    else:
+        title = f"Lucid Knight — Performance Report  [{datasets[0][0]}]"
+    fig.suptitle(title, fontsize=13, color="white", y=1.012)
 
     # --- 저장 ---
     # 단일: CSV와 같은 서브디렉토리에 저장
-    # 비교: PerformanceData 루트에 저장
+    # 비교: PerformanceData/Comparison 에 저장 (파일명에 두 데이터셋 stem 반영)
     if len(datasets) == 1:
         out_dir  = datasets[0][2]
-        out_name = f"report_{datasets[0][0]}.png"
+        out_name = f"report_{datasets[0][3]}.png"
     else:
-        out_dir  = SCRIPT_DIR
-        out_name = "report_comparison.png"
+        out_dir  = os.path.join(SCRIPT_DIR, "Comparison")
+        os.makedirs(out_dir, exist_ok=True)
+        out_name = f"compare_{datasets[0][3]}_vs_{datasets[1][3]}.png"
 
     out_path = os.path.join(out_dir, out_name)
     fig.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
@@ -186,12 +235,14 @@ def make_figure(files: list[str]):
 def resolve_files(args: list[str]) -> list[str]:
     if args:
         # 상대 경로면 SCRIPT_DIR 기준으로 해석, 서브디렉토리도 허용
+        # "경로=라벨" 형식이면 라벨 부분은 검증에서 제외하고 그대로 전달
         resolved = []
         for a in args[:2]:
-            path = a if os.path.isabs(a) else os.path.join(SCRIPT_DIR, a)
+            raw_path, sep, label = a.partition("=")
+            path = raw_path if os.path.isabs(raw_path) else os.path.join(SCRIPT_DIR, raw_path)
             if not os.path.exists(path):
                 sys.exit(f"❌ 파일을 찾을 수 없습니다: {path}")
-            resolved.append(path)
+            resolved.append(f"{path}={label}" if sep else path)
         return resolved
 
     # 인수 없으면 서브디렉토리 포함 가장 최근 CSV 자동 선택
