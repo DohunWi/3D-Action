@@ -3,6 +3,9 @@
 > A souls-like 3D action RPG built in Unity 6, used as a **performance‑engineering testbed**:
 > measure with custom tooling → locate bottlenecks with the Profiler → optimize → verify with data.
 
+[![Play on itch.io](https://img.shields.io/badge/▶_Play-itch.io-fa5c5c?style=flat-square&logo=itchdotio&logoColor=white)](https://dony-wi.itch.io/lucid-knight)
+[![Gameplay on YouTube](https://img.shields.io/badge/Gameplay-YouTube-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/M2ibQbFpHlg)
+
 ![FPS](https://img.shields.io/badge/Avg_FPS-94→152_(%2B62%25)-44cc66?style=flat-square)
 ![FrameTime](https://img.shields.io/badge/Frame_Time-11.1→6.9ms_(−38%25)-44cc66?style=flat-square)
 ![GC](https://img.shields.io/badge/GC%2Fframe-454→190B_(−58%25)-44cc66?style=flat-square)
