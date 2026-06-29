@@ -95,6 +95,7 @@ private static readonly int AnimID_DoAttack = Animator.StringToHash("doAttack");
 - **패링 연출 (타격감)**: `GameFeelManager.DoParryEffect` — 히트스톱(프리즈) + 짧은 슬로우모 + 색수차/렌즈왜곡/줌인. 길이는 인스펙터 `SerializeField`로 튜닝. `Time.timeScale`은 `try/finally`로 항상 복구(중단돼도 슬로우/프리즈 소프트락 없음) — 이 불변식 유지할 것
 - **컴포저 (Composure)**: 방어력 같은 개념, 0이 되면 스태거 + 50 컴포저 피해, 3초 후 회복
 - **데스 루프**: 소울즈 방식 — 사망 시 기억 조각 드롭, 제단에서 부활, 재방문하면 회수 가능
+- **적 처치 보상**: 경험치만 직접 지급(`EnemyStats.GiveRewards`). 메모리(기억 조각)는 **직접 지급하지 않고** 사망 시 드랍되는 `Memory Fragment` 픽업으로만 획득 — 직접 지급 + 드랍을 동시에 하면 보상이 2배가 되므로 금지. `EnemyStats.memoryReward` 필드는 제거하지 않고 **확장성용으로 유지**: 적별 보상 튜닝 값으로 남겨, 드랍되는 파편의 `memoryAmount`에 주입되어 단일 지급 경로로 흐른다(향후 밸런스 변경 시 이 값만 조정)
 
 ---
 
