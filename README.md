@@ -99,6 +99,7 @@ stateDiagram-v2
     Parry --> CounterAttack: parry success
     Locomotion --> Hit: damaged
     Attack --> Locomotion
+    Attack --> Roll: roll-cancel
     Roll --> Locomotion
     Skill --> Locomotion
     CounterAttack --> Locomotion
