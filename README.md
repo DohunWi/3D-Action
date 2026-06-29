@@ -10,7 +10,10 @@
 ![Lang](https://img.shields.io/badge/C%23-512BD4?style=flat-square&logo=csharp)
 
 <p align="center">
-  <img src="Images/0127_Play.gif" width="640" alt="Boss combat gameplay"/>
+  <img src="Images/0629_dragon_intro.gif" width="640" alt="Nightmare Dragon boss — roar into fire breath"/>
+</p>
+<p align="center">
+  ▶ <a href="https://youtu.be/M2ibQbFpHlg"><b>Watch full gameplay (YouTube)</b></a>
 </p>
 
 ---
@@ -149,6 +152,9 @@ psychological: stats are reframed as states of mind.
 composure/stagger, hybrid auto+interact looting.
 
 <p align="center">
-  <img src="Images/0204_parryJuice.gif" width="320" alt="Parry counter"/>
-  <img src="Images/0210_EliteMonster.gif" width="320" alt="Elite boss"/>
+  <img src="Images/0629_parry_counter.gif" width="380" alt="Parry into counter"/>
+  <img src="Images/0629_skill.gif" width="380" alt="Skill"/>
+  <br/>
+  <img src="Images/0629_elite.gif" width="380" alt="Elite enemy combat"/>
+  <img src="Images/0629_dragon_breath.gif" width="380" alt="Nightmare Dragon fire breath"/>
 </p>
