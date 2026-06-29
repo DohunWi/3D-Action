@@ -4,7 +4,9 @@ public class EnemyStats : CharacterStats
 {
     [Header("Rewards (Drop)")]
     public int expReward = 50;       // 주는 경험치
-    public int memoryReward = 100;   // 주는 돈 (기억의 파편)
+    // 메모리(기억의 파편)는 직접 지급하지 않고 사망 시 드랍되는 Memory Fragment 픽업으로만 획득한다.
+    // 이 값은 그 드랍 파편의 금액으로 주입돼 적별로 보상을 튜닝할 수 있다 (직접 지급 아님 → 이중 지급 없음).
+    public int memoryReward = 500;
 
     [Header("Loot Settings")]
     [Range(0f, 1f)] public float dropChance = 0.1f; // 아이템 드랍 확률 (10%)
@@ -57,23 +59,11 @@ public class EnemyStats : CharacterStats
 
     private void GiveRewards(Transform player)
     {
-        // A. 플레이어 스탯/지갑 찾기 (루트 오브젝트 기준)
-        // attacker가 무기일 수도 있으므로 안전하게 부모 탐색 필요할 수 있음
-        // 보통 attacker.root를 쓰거나 Weapon에서 root를 넘겨줌.
-        
+        // 경험치 지급 (메모리는 드랍되는 Memory Fragment 픽업으로만 획득)
         PlayerStats pStats = player.GetComponent<PlayerStats>();
-        PlayerWallet pWallet = player.GetComponent<PlayerWallet>();
-
-        // B. 경험치 지급
         if (pStats != null)
         {
             pStats.AddExperience(expReward);
-        }
-
-        // C. 돈(Memory) 지급
-        if (pWallet != null)
-        {
-            pWallet.AddMemory(memoryReward);
         }
 
         // // D. 소울 흡수 이펙트 (Juice)
@@ -86,7 +76,10 @@ public class EnemyStats : CharacterStats
         // E. 아이템 드랍 (Pickable)
         if (dropItemPrefab != null && Random.value <= dropChance)
         {
-            Instantiate(dropItemPrefab, transform.position + Vector3.up * 0.5f, Quaternion.identity);
+            GameObject drop = Instantiate(dropItemPrefab, transform.position + Vector3.up * 0.5f, Quaternion.identity);
+            // 떨어진 것이 기억 파편이면 적별 보상값을 주입 → 픽업 시 memoryReward만큼 획득
+            if (drop.TryGetComponent(out MemoryPickup memoryPickup))
+                memoryPickup.memoryAmount = memoryReward;
         }
     }
 }
