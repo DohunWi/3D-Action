@@ -13,15 +13,23 @@ public class Weapon : MonoBehaviour
     public BoxCollider _collider;
     protected List<Collider> _alreadyHitList = new List<Collider>();
     [HideInInspector] public float damageMultiplier = 1.0f;
+
+    // 이 무기를 소유한 캐릭터의 Transform. transform.root는 씬 정리용 컨테이너
+    // (예: "--- Enemies ---")까지 올라가버리므로, 실제 캐릭터(CharacterStats)를 기준으로 잡는다.
+    private Transform _ownerTransform;
+    protected Transform AttackerTransform => _ownerTransform;
     protected virtual void Awake()
     {
         // 내 몸에 없으면 '자식 오브젝트(뼈)' 뒤져서라도 찾아라!
-        if(_collider == null) 
+        if(_collider == null)
             _collider = GetComponentInChildren<BoxCollider>();
 
         if (_collider == null)
             Debug.LogError($"[Weapon] {gameObject.name}에 콜라이더가 없습니다! 인스펙터를 확인하세요.");
-            
+
+        // 무기를 소유한 캐릭터 본체를 캐싱 (없으면 안전하게 transform.root로 폴백)
+        CharacterStats owner = GetComponentInParent<CharacterStats>();
+        _ownerTransform = owner != null ? owner.transform : transform.root;
     }
     private void OnEnable()
     {
@@ -55,7 +63,7 @@ public class Weapon : MonoBehaviour
         if (target != null)
         {
             // 데이터에서 데미지 가져오기
-            target.TakeDamage(this.damage, weaponData.composureDamage, transform.root);
+            target.TakeDamage(this.damage, weaponData.composureDamage, AttackerTransform);
             _alreadyHitList.Add(other);
             OnAttackSuccess(other);
         }
