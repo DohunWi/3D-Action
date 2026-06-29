@@ -90,7 +90,8 @@ private static readonly int AnimID_DoAttack = Animator.StringToHash("doAttack");
 ## 전투 메카닉 요약
 
 - **콤보**: 3연타 기본, 각 타격마다 배율 적용, 타격 시 Volition 소모
-- **패리/반격**: 90도 정면 판정, 성공 시 1.5초 카운터 윈도우, 카운터 2배 데미지 + 넘어짐
+- **롤 캔슬**: 공격(Attack) 중 구르기 입력으로 콤보를 끊고 회피 가능 (Volition 소모). 애니메이터 AnyState→Roll 전이 활용
+- **패리/반격**: 120도 정면 판정(Player.prefab `parryAngle`), 성공 시 1.5초 카운터 윈도우, 카운터 2배 데미지 + 넘어짐. attacker는 무기를 소유한 `CharacterStats` 기준(씬 계층 컨테이너 무관). 카운터 종료 시 `isCountering` 강제 해제로 공격 락 방지
 - **컴포저 (Composure)**: 방어력 같은 개념, 0이 되면 스태거 + 50 컴포저 피해, 3초 후 회복
 - **데스 루프**: 소울즈 방식 — 사망 시 기억 조각 드롭, 제단에서 부활, 재방문하면 회수 가능
 

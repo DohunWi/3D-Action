@@ -645,7 +645,7 @@ MonoBehaviour:
   composureRecoveryTime: 3
   composureRecoveryRate: 10
   expReward: 50
-  memoryReward: 100
+  memoryReward: 500
   dropChance: 1
   dropItemPrefab: {fileID: 6585988200766860862, guid: 990df1cfc65ec486aba309e1a117fedb, type: 3}
   animator: {fileID: 4661863084572555302}
