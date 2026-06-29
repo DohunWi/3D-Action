@@ -236,9 +236,12 @@ public class PlayerController : MonoBehaviour
 
             case PlayerState.CounterAttack:
                 WeaponDisable();
-                // 무기 데미지 원상복구 
+                // 무기 데미지 원상복구
                 if (myWeapon != null) myWeapon.damageMultiplier = 1.0f;
-                // animator.SetBool(AnimID_CanCounterAttack, false);
+                // 카운터 상태를 어떤 경로로 빠져나가든(피격·사망 등으로 중단 포함) isCountering을 반드시 해제.
+                // 애니메이션 이벤트 OnCounterEnd(1.16초)에만 의존하면, 그 전에 카운터가 끊길 경우
+                // isCountering이 true로 남아 이후 일반 공격 전이(조건: isCountering==false)가 영구 차단됨.
+                animator.SetBool(AnimID_IsCountering, false);
                 animator.ResetTrigger(AnimID_DoAttack);
                 _canCounterAttack = false;
                 CancelInvoke(nameof(ResetCounterWindow));
@@ -267,9 +270,12 @@ public class PlayerController : MonoBehaviour
                 // 대기 상태로 복귀 시 콤보 관련 모든 변수/파라미터 초기화
                 _comboStep = 0;
                 _comboInputReceived = false;
-                
+
                 // 애니메이터도 0으로 돌려놔야 다음 공격이나 트랜지션이 꼬이지 않음
                 animator.SetInteger(AnimID_ComboStep, 0);
+                // 소비되지 않고 남은 공격 트리거 정리 (다음 행동에서 오발동 방지)
+                animator.ResetTrigger(AnimID_DoCounterAttack);
+                animator.ResetTrigger(AnimID_DoAttack);
                 break;
 
             case PlayerState.Roll:
@@ -310,10 +316,13 @@ public class PlayerController : MonoBehaviour
 
                 // 첫 1타 배율 초기화
                 if (myWeapon != null) myWeapon.damageMultiplier = GetCurrentComboMultiplier(); // 1.0f
-                
+
                 // ★ 콤보 단계에 따라 다른 애니메이션 재생
                 // (Animator에 파라미터로 "ComboStep" int형이나, 각각의 Trigger가 필요함)
-                animator.SetInteger(AnimID_ComboStep, _comboStep); 
+                animator.SetInteger(AnimID_ComboStep, _comboStep);
+                // 직전에 소비되지 않고 큐에 남은 카운터 트리거가 일반 공격 중 발동하는 것 방지
+                // (남아있으면 카운터 애니메이션만 재생되고 데미지/사운드는 1.0배 일반 공격으로 나감)
+                animator.ResetTrigger(AnimID_DoCounterAttack);
                 animator.SetTrigger(AnimID_DoAttack);
 
                 // 공격 시작할 때 콤보 입력 초기화 (이번 공격에 대한 입력을 새로 받아야 하니까)
@@ -814,6 +823,9 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
+            // 카운터는 전용 애니메이션 이벤트(OnCounterEnd, 카운터 클립 1.16초)로만 종료한다.
+            // 여기서 처리하면 Parry 클립의 OnAnimationEnd 이벤트가 desync 구간(코드=CounterAttack,
+            // 애니=Parry 클립 재생 중)에서 발화해 카운터를 조기 종료시킬 수 있으므로 건드리지 않는다.
             if(currentState == PlayerState.CounterAttack) return;
             ChangeState(PlayerState.Locomotion);
         }
