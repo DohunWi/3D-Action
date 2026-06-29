@@ -16,9 +16,20 @@ public class GameFeelManager : MonoBehaviour
     // Virtual Camera GameObject에 붙인 CinemachineImpulseSource를 여기에 연결
     public CinemachineImpulseSource impulseSource;
 
+    [Header("Parry Feel")]
+    [Tooltip("히트스톱(완전 정지) 길이 — real time 초")]
+    [SerializeField] private float _parryFreezeDuration = 0.04f;
+    [Tooltip("프리즈 직후 슬로우모 배속 (0~1)")]
+    [SerializeField] private float _parrySlowScale = 0.2f;
+    [Tooltip("슬로우모 지속 시간 — real time 초")]
+    [SerializeField] private float _parrySlowDuration = 0.1f;
+    [Tooltip("임팩트 시 줌인 양 (FOV 감소값)")]
+    [SerializeField] private float _parryZoomIn = 15f;
+
     private ChromaticAberration _chromaticAberration;
     private LensDistortion _lensDistortion;
     private float _defaultFOV = 40f;
+    private Coroutine _parryCoroutine;
 
     private void Awake()
     {
@@ -80,70 +91,59 @@ public class GameFeelManager : MonoBehaviour
 
     public void DoParryEffect()
     {
-        StopAllCoroutines();
-        StartCoroutine(ParryFeelRoutine());
+        // 전역 StopAllCoroutines 대신 패링 전용 핸들만 정지 → 카메라 셰이크 등 다른 코루틴 보호.
+        // 이전 패링 루틴이 진행 중이면 Dispose되며 finally가 실행돼 상태가 원복된 뒤 새로 시작된다.
+        if (_parryCoroutine != null) StopCoroutine(_parryCoroutine);
+        _parryCoroutine = StartCoroutine(ParryFeelRoutine());
     }
 
     private IEnumerator ParryFeelRoutine()
     {
-        // 1. 현재 활성화된(Live) 가상 카메라 찾기
-        // (ICinemachineCamera 인터페이스로 반환되므로 형변환 필요할 수 있음)
-        var liveCam = cinemachineBrain.ActiveVirtualCamera as CinemachineCamera; 
+        // 현재 활성화된(Live) 가상 카메라 찾기
+        var liveCam = cinemachineBrain != null
+            ? cinemachineBrain.ActiveVirtualCamera as CinemachineCamera
+            : null;
+        float currentFOV = liveCam != null ? liveCam.Lens.FieldOfView : _defaultFOV;
 
-        float currentFOV = _defaultFOV; // 기본값
-        
-        // 카메라가 있다면 현재 FOV 가져오기
-        if (liveCam != null)
+        // try/finally: 정상 종료뿐 아니라 StopCoroutine·오브젝트 파괴로 코루틴이 Dispose될 때도
+        // finally가 실행되어 timeScale/FOV/post-processing을 반드시 원복 → 슬로우 상태로 멈추는 소프트락 방지.
+        try
         {
-            currentFOV = liveCam.Lens.FieldOfView; 
+            // [임팩트] 쾅! — 색수차·렌즈왜곡·줌인 + 히트스톱(완전 정지)
+            if (_chromaticAberration != null) _chromaticAberration.intensity.value = 1.0f;
+            if (_lensDistortion != null) _lensDistortion.intensity.value = -0.5f;
+            if (liveCam != null) liveCam.Lens.FieldOfView = currentFOV - _parryZoomIn;
+
+            Time.timeScale = 0f;
+            yield return new WaitForSecondsRealtime(_parryFreezeDuration);
+
+            // [여운] 짧은 슬로우모로 풀면서 이펙트 복구
+            Time.timeScale = _parrySlowScale;
+
+            float elapsed = 0f;
+            while (elapsed < _parrySlowDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = elapsed / _parrySlowDuration;
+
+                if (_chromaticAberration != null)
+                    _chromaticAberration.intensity.value = Mathf.Lerp(1.0f, 0f, t);
+                if (_lensDistortion != null)
+                    _lensDistortion.intensity.value = Mathf.Lerp(-0.5f, 0f, t);
+                if (liveCam != null)
+                    liveCam.Lens.FieldOfView = Mathf.Lerp(currentFOV - _parryZoomIn, currentFOV, t);
+
+                yield return null;
+            }
         }
-
-        // ====================================================
-        // [임팩트] 쾅!
-        // ====================================================
-        if (_chromaticAberration != null) _chromaticAberration.intensity.value = 1.0f;
-        if (_lensDistortion != null) _lensDistortion.intensity.value = -0.5f;
-
-        // ★ 현재 카메라 줌인
-        if (liveCam != null) liveCam.Lens.FieldOfView = currentFOV - 15f;
-
-        Time.timeScale = 0.0f;
-        yield return new WaitForSecondsRealtime(0.05f); 
-
-        // ====================================================
-        // [여운] 복구
-        // ====================================================
-        Time.timeScale = 0.2f;
-
-        float duration = 0.3f;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
+        finally
         {
-            elapsed += Time.unscaledDeltaTime;
-            float t = elapsed / duration;
-
-            if (_chromaticAberration != null) 
-                _chromaticAberration.intensity.value = Mathf.Lerp(1.0f, 0f, t);
-            
-            if (_lensDistortion != null) 
-                _lensDistortion.intensity.value = Mathf.Lerp(-0.5f, 0f, t);
-
-            // ★ 현재 카메라 FOV 복구
-            if (liveCam != null)
-                liveCam.Lens.FieldOfView = Mathf.Lerp(currentFOV - 15f, currentFOV, t);
-
-            yield return null;
+            // [복구] 어떤 경로로 종료되든 상태 원복
+            Time.timeScale = 1.0f;
+            if (_chromaticAberration != null) _chromaticAberration.intensity.value = 0f;
+            if (_lensDistortion != null) _lensDistortion.intensity.value = 0f;
+            if (liveCam != null) liveCam.Lens.FieldOfView = currentFOV;
+            _parryCoroutine = null;
         }
-
-        // ====================================================
-        // [완료] 깔끔하게 정리
-        // ====================================================
-        Time.timeScale = 1.0f;
-        if (_chromaticAberration != null) _chromaticAberration.intensity.value = 0f;
-        if (_lensDistortion != null) _lensDistortion.intensity.value = 0f;
-        
-        // 혹시 그 사이에 카메라가 바뀌었을 수도 있으니 다시 확인 후 복구
-        if (liveCam != null) liveCam.Lens.FieldOfView = currentFOV;
     }
 }
