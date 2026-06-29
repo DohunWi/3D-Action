@@ -114,7 +114,8 @@ enum EnemyState { Idle, Patrol, Chase, Attack, Parried, Hit, Down, Die }
 ## 데이터 저장 구조 (JSON)
 
 - 경로: `Application.persistentDataPath/save.json`
-- **GameData.cs**: level, currentExp, memory, sanity, awareness, tenacity, conviction, insight, sceneName, posX/Y/Z, currentPotions
+- **GameData.cs**: level, currentExp, memory, sanity, awareness, tenacity, conviction, insight, sceneName, posX/Y/Z, currentPotions, 튜토리얼/독백 완료 플래그
+- **New Game 초기화 불변식**: `GameManager.ResetToNewGame()`은 스탯뿐 아니라 진행 플래그(`_triggeredMonologues`·`memoryTutorialTriggered`·`potionTutorialTriggered`)도 반드시 초기화해야 함. 앱 시작 시 직전 세이브가 Awake에서 자동 로드되므로, 안 지우면 New Game에서 독백/튜토리얼이 "이미 봤음"으로 스킵됨
 
 ---
 
