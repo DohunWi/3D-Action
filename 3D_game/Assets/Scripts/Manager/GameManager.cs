@@ -271,6 +271,12 @@ public class GameManager : MonoBehaviour
 
         sanity = 0; awareness = 0; tenacity = 0; conviction = 0; insight = 0;
         maxExp = 100; // 시작 maxExp는 PlayerStats.InitFromSO()에서 SO 값으로 덮어씌워짐
+
+        // 진행 플래그 초기화 — 안 지우면 직전 세이브가 Awake에서 로드된 상태로 New Game을 눌렀을 때
+        // 독백/튜토리얼이 "이미 봤음"으로 남아 새 게임에서 재생되지 않는다.
+        _triggeredMonologues.Clear();
+        memoryTutorialTriggered = false;
+        potionTutorialTriggered = false;
     }
 
     public void ContinueGame()
