@@ -536,7 +536,11 @@ public class PlayerController : MonoBehaviour
 
     private void OnRoll(InputAction.CallbackContext context)
     {
-        if (currentState == PlayerState.Locomotion && _isGrounded)
+        // 평상시(Locomotion)뿐 아니라 공격(Attack) 중에도 구르기로 캔슬 허용 → 콤보를 끊고 적 공격 회피.
+        // 애니메이터는 AnyState→Roll(doRoll, Has Exit Time 0) 전이로 즉시 전환되고,
+        // Attack 종료 블록이 무기 히트박스/배율을, Roll 진입 블록이 콤보 상태를 정리한다.
+        bool canRoll = currentState == PlayerState.Locomotion || currentState == PlayerState.Attack;
+        if (canRoll && _isGrounded)
         {
             // 스태미나 없으면 구르기 불가
             if (_stats != null && _stats.UseVolition(rollVolitionCost))
